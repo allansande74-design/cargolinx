@@ -34,6 +34,15 @@ explain a quote. **No model ever sets a price or a date.**
 - 28 automated tests pass (`npm test`): engine maths, refusal below the margin floor, ETA change
   history, outbox idempotency, conflict resolution, document content.
 
+## Tariff, conformity and clearance (added 29 October 2026)
+
+- **HS-driven duty.** An HS code resolves to its EAC CET band; an unresolved code stops the quote instead of being guessed. Preferred rate: EAC-origin goods with a valid certificate of origin pay 0%; without the certificate the full band applies, because the preference is claimed by document.
+- **PVoC priced properly.** Conformity verification is 0.6% of FOB on route A (0.55% B, 0.35% C), floor USD 265, cap USD 2,700 (KEBS PVoC Manual v12). It is not charged on EAC-origin goods moving under the customs union — the certificate of origin governs there.
+- **Waivers are evidence.** Diplomatic, project, EPZ and raw-material exemptions apply only with a reference number and the named supporting letters.
+- **Document dossier per consignment.** Commercial invoice, packing list, transport document, insurance, certificate of origin (Chamber of Commerce, or the EAC certificate), PVoC certificate (KEBS agent), phytosanitary certificate (KEPHIS) for plant-product chapters, transit bond, entry and duty receipt. Each document carries its issuer and a missing/attached/verified state; verifying something that was never attached is refused.
+- **Clearance systems stated honestly.** Kenya: KRA iCMS, iTax, KenTrade TradeNet — file prepared and pre-validated here, lodged by a licensed agent. Uganda, Tanzania, Rwanda, Burundi, South Sudan and DR Congo are in the registry marked "to confirm" until access is verified with each revenue authority. No filing API is claimed anywhere.
+- **Express corridor score.** Green, yellow or red from document verification, duty evidence, PVoC status and trusted-trader standing, with the reasons printed.
+
 ## Not yet verified
 
 - The Meta model calls (photo counting, transcription, lane matching, explanation) are written against

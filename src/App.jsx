@@ -5,6 +5,9 @@ import { STORES, all, put, saveShipment, savePhoto, getPhoto, newId, kvGet } fro
 import { flush, queueDepth, getConfig, setConfig } from "./lib/sync.js";
 import { probe, readCargoPhoto, transcribeVoice, explainQuote, getModelConfig, setModelConfig } from "./lib/meta.js";
 import { quoteHtml } from "./lib/quote-doc.mjs";
+import { dutyTreatment, pvocFee, pvocApplicable, resolveHS, waiverAdjustment, EAC_MEMBERS, WAIVER_TYPES, FX } from "../engine/tariff.mjs";
+import { buildDossier, dossierStatus, setDocStatus } from "../engine/docs.mjs";
+import { country, integrationState, expressReadiness, COUNTRY_EXTRAS } from "../engine/countries.mjs";
 
 const money = (n, ccy = "KES") =>
   `${ccy} ${Number(n || 0).toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -110,6 +113,7 @@ export default function App() {
           ["new", "New shipment"],
           ["quote", "Quote"],
           ["track", "Tracking & POD"],
+          ["compliance", "Compliance"],
           ["settings", "Setup"],
         ].map(([k, label]) => (
           <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}>
@@ -122,6 +126,7 @@ export default function App() {
         {tab === "new" && <NewShipment onCreated={async (s) => { await refresh(); setSelectedId(s.id); setTab("quote"); }} model={model} />}
         {tab === "quote" && <QuoteView shipment={selected} shipments={shipments} onPick={setSelectedId} onChange={refresh} model={model} />}
         {tab === "track" && <TrackView shipment={selected} shipments={shipments} onPick={setSelectedId} onChange={refresh} />}
+        {tab === "compliance" && <ComplianceView shipment={selected} shipments={shipments} onPick={setSelectedId} onChange={refresh} />}
         {tab === "settings" && <Settings backend={backend} model={model} onChanged={async () => { await refresh(); probe().then(setModel); }} queue={queue} onSync={syncNow} busy={busy} />}
       </main>
 
@@ -144,6 +149,10 @@ function NewShipment({ onCreated, model }) {
     goods: "",
     freight: "",
     duty: 0.25,
+    hs: "1006.30",
+    originCountry: "CN",
+    eacCoO: false,
+    waiver: "none",
     clearing: "",
     transport: "",
     lastMile: "",
@@ -239,6 +248,19 @@ function NewShipment({ onCreated, model }) {
     if (!form.goods || !form.freight) return setErr("Goods value and freight are needed before a cost can be computed.");
     setSaving(true);
     try {
+      const dt = dutyTreatment({ hs: form.hs, originCountry: form.originCountry, hasEacCertificateOfOrigin: form.eacCoO });
+      if (!dt.resolved) {
+        setSaving(false);
+        return setErr(dt.reason);
+      }
+      const eacOrigin = Boolean(EAC_MEMBERS[String(form.originCountry).toUpperCase()]);
+      const pvReq = pvocApplicable({ item: dt.item, originCountry: form.originCountry, hasEacCertificateOfOrigin: form.eacCoO });
+      const pv = pvReq.required ? pvocFee({ fobUsd: num(form.goods) / FX.USD_KES }) : null;
+      const waiver = waiverAdjustment({ type: form.waiver });
+      const dossier = buildDossier(
+        { hs: form.hs, originCountry: form.originCountry, destinationCountry: "KE" },
+        { pvocRequired: pvReq.required, eacOrigin: eacOrigin && form.eacCoO }
+      );
       const id = newId("shp");
       const ref = `CLX-${new Date().toISOString().slice(2, 10).replace(/-/g, "")}-${Math.floor(Math.random() * 900 + 100)}`;
       const segments = (LANES[form.lane] ?? LANES["Nairobi - Kampala"]).map((s) => ({
@@ -256,7 +278,14 @@ function NewShipment({ onCreated, model }) {
         qty: num(form.qty) || 1,
         weightKg: num(form.weightKg),
         value: { goods: num(form.goods), freight: num(form.freight) },
-        dutyRate: num(form.duty),
+        dutyRate: waiver.valid ? 0 : dt.dutyRate,
+        hs: form.hs,
+        originCountry: form.originCountry,
+        eacCoO: form.eacCoO,
+        dutyTreatment: dt,
+        pvoc: pv,
+        waiver,
+        dossier,
         services: { clearing: num(form.clearing), transport: num(form.transport), lastMile: num(form.lastMile) },
         marginPct: 0.3,
         photoId,
@@ -331,6 +360,30 @@ function NewShipment({ onCreated, model }) {
               </option>
             ))}
           </select>
+        </label>
+        <label className="field">
+          HS code
+          <input value={form.hs} onChange={set("hs")} placeholder="1006.30" />
+        </label>
+        <label className="field">
+          Country of origin
+          <select value={form.originCountry} onChange={set("originCountry")}>
+            {["CN", "IN", "AE", "JP", "US", "ZA", "TR", "GB", ...Object.keys(EAC_MEMBERS)].map((c) => (
+              <option key={c} value={c}>{c}{EAC_MEMBERS[c] ? ` — ${EAC_MEMBERS[c]}` : ""}</option>
+            ))}
+          </select>
+        </label>
+        <label className="field">
+          Waiver / exemption
+          <select value={form.waiver} onChange={set("waiver")}>
+            {Object.entries(WAIVER_TYPES).map(([k, v]) => (
+              <option key={k} value={k}>{v.label}</option>
+            ))}
+          </select>
+        </label>
+        <label className="field" style={{ justifyContent: "flex-end" }}>
+          <span>EAC certificate of origin held</span>
+          <input type="checkbox" checked={form.eacCoO} onChange={(e) => setForm({ ...form, eacCoO: e.target.checked })} style={{ width: 22, height: 22 }} />
         </label>
         <label className="field">
           Clearing
@@ -411,6 +464,7 @@ function QuoteView({ shipment, shipments, onPick, onChange, model }) {
         clearing: shipment.services.clearing,
         transport: shipment.services.transport,
         lastMile: shipment.services.lastMile,
+        other: shipment.pvoc?.kes ?? 0,
         quantity: shipment.qty,
       }),
     [shipment]
@@ -665,6 +719,119 @@ function TrackView({ shipment, shipments, onPick, onChange }) {
             </li>
           ))}
         </ul>
+      </section>
+    </>
+  );
+}
+
+function ComplianceView({ shipment, shipments, onPick, onChange }) {
+  const [msg, setMsg] = useState("");
+  if (!shipment) return <section className="card"><h2>Compliance</h2><p className="hint">Create a shipment first.</p></section>;
+
+  const hsInfo = resolveHS(shipment.hs);
+  const dossier = shipment.dossier ?? [];
+  const status = dossierStatus(dossier);
+  const dt = shipment.dutyTreatment ?? dutyTreatment({ hs: shipment.hs, originCountry: shipment.originCountry, hasEacCertificateOfOrigin: shipment.eacCoO });
+  const pvocAttached = dossier.some((d) => d.code === "pvoc_certificate" && d.status === "verified");
+  const express = expressReadiness({ dossier, dutyTreatment: dt, pvoc: { required: Boolean(shipment.pvoc), certificateAttached: pvocAttached } });
+  const sys = integrationState("KE");
+
+  async function mark(code, next) {
+    setMsg("");
+    try {
+      const updated = setDocStatus(dossier, code, next);
+      await saveShipment({ ...shipment, dossier: updated });
+      await flush();
+      onChange();
+    } catch (e) {
+      setMsg(e.message);
+    }
+  }
+
+  return (
+    <>
+      <section className="card">
+        <div className="row">
+          <h2 style={{ margin: 0 }}>Compliance · {shipment.ref}</h2>
+          <span className={`pill ${express.lane === "green" ? "ok" : express.lane === "yellow" ? "warn" : "bad"}`}>{express.lane} lane · {express.score}/100</span>
+          <select style={{ maxWidth: 240, marginLeft: "auto" }} value={shipment.id} onChange={(e) => onPick(e.target.value)}>
+            {shipments.map((s) => (<option key={s.id} value={s.id}>{s.ref}</option>))}
+          </select>
+        </div>
+        <p className="hint" style={{ marginTop: 8 }}>{express.meaning}</p>
+        <ul className="hint" style={{ marginTop: 6 }}>
+          {express.reasons.map((r, i) => (<li key={i}>{r}</li>))}
+        </ul>
+      </section>
+
+      <section className="card">
+        <h2>Classification and duty</h2>
+        <div className="kpi">
+          <div><span>HS code</span><strong>{shipment.hs ?? "—"}</strong></div>
+          <div><span>Description</span><strong style={{ fontSize: 14 }}>{hsInfo?.label ?? "unresolved"}</strong></div>
+          <div><span>CET band</span><strong>{hsInfo?.band === null || hsInfo?.band === undefined ? "—" : `${(hsInfo.band * 100).toFixed(0)}%`}</strong></div>
+          <div><span>Rate applied</span><strong>{(shipment.dutyRate * 100).toFixed(0)}%</strong></div>
+        </div>
+        <p className="hint" style={{ marginTop: 8 }}>
+          Origin {shipment.originCountry} · {dt.reason}
+          {hsInfo?.source ? ` · ${hsInfo.source}` : ""}
+        </p>
+        {dt.preferential && <div className="notice" style={{ marginTop: 8 }}>{dt.preferential}</div>}
+        {shipment.waiver && shipment.waiver.type !== "none" && (
+          <div className={`notice ${shipment.waiver.valid ? "" : "bad"}`} style={{ marginTop: 8 }}>
+            Waiver: {WAIVER_TYPES[shipment.waiver.type].label} · {shipment.waiver.note}
+            {shipment.waiver.requires.length ? ` · Evidence: ${shipment.waiver.requires.join(", ")}` : ""}
+          </div>
+        )}
+      </section>
+
+      {shipment.pvoc && (
+        <section className="card">
+          <h2>Conformity (PVoC)</h2>
+          <div className="kpi">
+            <div><span>Route</span><strong>{shipment.pvoc.route}</strong></div>
+            <div><span>On FOB (USD)</span><strong>${shipment.pvoc.fobUsd.toLocaleString("en-US", { maximumFractionDigits: 0 })}</strong></div>
+            <div><span>Fee</span><strong>${shipment.pvoc.usd.toLocaleString("en-US")}</strong></div>
+            <div><span>Fee (KES)</span><strong>{money(shipment.pvoc.kes, "")}</strong></div>
+          </div>
+          <p className="hint" style={{ marginTop: 8 }}>
+            {(shipment.pvoc.pct * 100).toFixed(2)}% of FOB, floor USD 265, cap USD 2,700{shipment.pvoc.capped ? ` — ${shipment.pvoc.capped} applied` : ""}.
+            Rate at {shipment.pvoc.fx.toFixed(2)} KES/USD ({FX.asOf}). Source: {shipment.pvoc.source}.
+          </p>
+        </section>
+      )}
+
+      <section className="card">
+        <h2>Document file · {status.verified}/{status.total} verified</h2>
+        <p className="hint">{status.readyToLodge ? "Ready to lodge." : `Next: ${status.nextAction}`}</p>
+        <table className="lines">
+          <thead><tr><th>Document</th><th>Issuer</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            {dossier.map((d) => (
+              <tr key={d.code}>
+                <td>{d.label}{d.mandatory ? "" : " (if required)"}</td>
+                <td className="hint">{d.issuer}</td>
+                <td><span className={`pill ${d.status === "verified" ? "ok" : d.status === "attached" ? "warn" : "bad"}`}>{d.status}</span></td>
+                <td>
+                  {d.status === "missing" && <button className="ghost" onClick={() => mark(d.code, "attached")}>Attach</button>}
+                  {d.status === "attached" && <button className="ghost" onClick={() => mark(d.code, "verified")}>Verify</button>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {msg && <div className="notice bad" style={{ marginTop: 8 }}>{msg}</div>}
+      </section>
+
+      <section className="card">
+        <h2>Clearance systems</h2>
+        <p className="hint">
+          Kenya · customs {sys.customs} · tax {country("KE").tax} · single window {sys.singleWindow}.
+          The desk prepares and pre-validates; lodging is done by a licensed agent. {sys.canFile ? "" : "No direct filing is claimed."}
+        </p>
+        <p className="hint" style={{ marginTop: 6 }}>
+          Regional partners in the file: {COUNTRY_EXTRAS.KE.length ? "KE standards permit required" : "no extras"} · Uganda, Tanzania, Rwanda, Burundi, South Sudan and DR Congo each carry their own systems and are marked "to confirm" until we verify access with the revenue authority.
+        </p>
       </section>
     </>
   );
