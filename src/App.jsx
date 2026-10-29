@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { landedCost, quote, floorPrice, KE_RATES } from "../engine/landed.mjs";
 import { planEta, applyEvent } from "../engine/eta.mjs";
-import { STORES, all, put, saveShipment, saveOrder, savePhoto, getPhoto, newId, kvGet, kvSet } from "./lib/db.js";
+import { STORES, all, put, saveShipment, saveOrder, saveQueued, savePhoto, getPhoto, newId, kvGet, kvSet } from "./lib/db.js";
 import { flush, queueDepth, getConfig, setConfig } from "./lib/sync.js";
 import { probe, readCargoPhoto, transcribeVoice, explainQuote, getModelConfig, setModelConfig } from "./lib/meta.js";
 import { quoteHtml } from "./lib/quote-doc.mjs";
@@ -12,6 +12,9 @@ import { createAccount, createUser, can, assertCan, scoped, documentHeader, cred
 import { createOrder, advance, nextStage, blockersFor, receiveGoods, dispatch as dispatchOrder, deliver as deliverOrder, slaState, STAGES as ORDER_STAGES, ORDER_TYPES } from "../engine/orders.mjs";
 import { config as loconavConfig, probe as loconavProbe, parseWebhook, trackingState, LOCONAV } from "../engine/loconav.mjs";
 import { parseSpec, compareOffers, dropshipDecision, rfqDraft, landedPerUnit } from "../engine/sourcing.mjs";
+import { buildInvoice, recordPayment, ageing, creditExposure, nextInvoiceNumber } from "../engine/invoicing.mjs";
+import { receiveLot, stockPosition, allocate as allocateStock, pickList, availabilityStatement, binName } from "../engine/inventory.mjs";
+import { invoiceHtml, deliveryNoteHtml, packingListHtml } from "./lib/doc-templates.mjs";
 import { list as listPlugins, status as pluginStatus, configure as configurePlugin, dryRun, supports as pluginSupports, get as getPlugin } from "../engine/plugins.mjs";
 
 const money = (n, ccy = "KES") =>
@@ -125,6 +128,8 @@ export default function App() {
           ["compliance", "Compliance"],
           ["source", "Sourcing"],
           ["orders", "Orders"],
+          ["money", "Money"],
+          ["warehouse", "Warehouse"],
           ["plugins", "Plugins"],
           ["accounts", "Accounts"],
           ["settings", "Setup"],
@@ -142,6 +147,8 @@ export default function App() {
         {tab === "compliance" && <ComplianceView shipment={selected} shipments={shipments} onPick={setSelectedId} onChange={refresh} />}
         {tab === "source" && <SourcingView />}
         {tab === "orders" && <OrdersView user={user} accounts={accounts} />}
+        {tab === "money" && <MoneyView user={user} accounts={accounts} />}
+        {tab === "warehouse" && <WarehouseView user={user} />}
         {tab === "plugins" && <PluginsView />}
         {tab === "accounts" && <AccountsView user={user} accounts={accounts} setAccounts={setAccounts} setUser={setUser} />}
         {tab === "settings" && <Settings backend={backend} model={model} onChanged={async () => { await refresh(); probe().then(setModel); }} queue={queue} onSync={syncNow} busy={busy} />}
@@ -1341,6 +1348,297 @@ function PluginsView() {
           Sourcing plugins bring offers in. The sourcing module compares them on your terms — quantity, budget, lead time, certificates and whether they ship here — and the order pipeline takes over from the purchase onwards. Dropship orders skip the warehouse; stock orders land in Nairobi.
           A plugin without credentials shows the request it would send and nothing else. No catalogue, no price and no supplier is ever invented.
         </p>
+      </section>
+    </>
+  );
+}
+
+function MoneyView({ user, accounts }) {
+  const [orders, setOrders] = useState([]);
+  const [invoices, setInvoices] = useState([]);
+  const [open, setOpen] = useState(null);
+  const [payment, setPayment] = useState({ amount: "", method: "mpesa", reference: "" });
+  const [msg, setMsg] = useState("");
+
+  const load = async () => {
+    setOrders(((await all(STORES.orders)) ?? []).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)));
+    setInvoices((await all(STORES.invoices)) ?? []);
+  };
+  useEffect(() => { load(); }, []);
+
+  const billable = orders.filter((o) => ["dispatched", "delivered"].includes(o.stage) && (!user || can(user.role, "account.view") || o.accountId === user.accountId));
+
+  async function issue(order) {
+    setMsg("");
+    try {
+      const existing = invoices.map((i) => i.number);
+      const number = nextInvoiceNumber({ series: existing });
+      const inv = buildInvoice({ order, kind: "tax", number });
+      await saveQueued(STORES.invoices, "invoice", inv, "number");
+      await flush();
+      await load();
+      setOpen(number);
+      setMsg(`Invoice ${number} issued for ${money(inv.total, inv.currency)}.${inv.unposted.length ? ` Not yet posted: ${inv.unposted.join("; ")}.` : ""}`);
+    } catch (e) {
+      setMsg(e.message);
+    }
+  }
+
+  async function pay(inv) {
+    setMsg("");
+    try {
+      const updated = recordPayment(inv, { amount: Number(payment.amount), method: payment.method, reference: payment.reference || null });
+      await saveQueued(STORES.invoices, "invoice", updated, "number");
+      await flush();
+      await load();
+      setPayment({ amount: "", method: "mpesa", reference: "" });
+      setMsg(`Payment recorded. Balance ${money(updated.balance, updated.currency)}.`);
+    } catch (e) {
+      setMsg(e.message);
+    }
+  }
+
+  const current = invoices.find((i) => i.number === open) ?? invoices[0] ?? null;
+  const pos = ageing(invoices);
+  const exposure = user ? creditExposure(invoices, user.accountId) : 0;
+
+  function print(inv) {
+    const order = orders.find((o) => o.id === inv.orderId);
+    const w = window.open("", "_blank");
+    if (!w) return;
+    w.document.write(invoiceHtml({ invoice: inv, order, account: accounts.find((a) => a.id === inv.accountId) }));
+    w.document.close();
+    w.focus();
+  }
+
+  return (
+    <>
+      <section className="card">
+        <h2>Issue an invoice</h2>
+        <p className="hint">An invoice is built from the order's posted line values — never from the quotation that opened it.</p>
+        {billable.length === 0 && <p className="hint">No dispatched or delivered orders to invoice yet.</p>}
+        <div className="row" style={{ marginTop: 8 }}>
+          {billable.slice(0, 4).map((o) => (
+            <button key={o.id} className="ghost" onClick={() => issue(o)}>Invoice order {o.id.slice(-6)} · {money(o.valueKes, "")}</button>
+          ))}
+        </div>
+        {msg && <div className="notice" style={{ marginTop: 10 }}>{msg}</div>}
+      </section>
+
+      <section className="card">
+        <h2>Ledger</h2>
+        <table className="lines">
+          <thead><tr><th>Number</th><th>Order</th><th className="num">Total</th><th className="num">Paid</th><th className="num">Balance</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            {invoices.map((i) => (
+              <tr key={i.number}>
+                <td>{i.number}</td>
+                <td>{(i.orderId || "").slice(-6)}</td>
+                <td className="num">{money(i.total, "")}</td>
+                <td className="num">{money(i.paid, "")}</td>
+                <td className="num">{money(i.balance, "")}</td>
+                <td><span className={`pill ${i.status === "paid" ? "ok" : i.status === "part paid" ? "warn" : "bad"}`}>{i.status}</span></td>
+                <td><button className="ghost" onClick={() => setOpen(i.number)}>Open</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {invoices.length === 0 && <p className="hint">No invoices yet.</p>}
+      </section>
+
+      {current && (
+        <section className="card">
+          <div className="row">
+            <h2 style={{ margin: 0 }}>{current.number} · {current.status}</h2>
+            <span className="pill">{current.kind}</span>
+          </div>
+          <div className="kpi" style={{ marginTop: 10 }}>
+            <div><span>Subtotal</span><strong>{money(current.subtotal, current.currency)}</strong></div>
+            <div><span>VAT</span><strong>{money(current.vat, current.currency)}</strong></div>
+            <div><span>Total</span><strong>{money(current.total, current.currency)}</strong></div>
+            <div><span>Balance</span><strong>{money(current.balance, current.currency)}</strong></div>
+          </div>
+          <div className="grid" style={{ marginTop: 10 }}>
+            <label className="field">Amount<input type="number" value={payment.amount} onChange={(e) => setPayment({ ...payment, amount: e.target.value })} /></label>
+            <label className="field">Method
+              <select value={payment.method} onChange={(e) => setPayment({ ...payment, method: e.target.value })}>
+                {["mpesa", "bank", "cash", "card", "offset"].map((m) => (<option key={m}>{m}</option>))}
+              </select>
+            </label>
+            <label className="field">Reference<input value={payment.reference} onChange={(e) => setPayment({ ...payment, reference: e.target.value })} placeholder="M-PESA code" /></label>
+          </div>
+          <div className="row" style={{ marginTop: 10 }}>
+            <button className="primary" onClick={() => pay(current)} disabled={current.status === "paid"}>Record payment</button>
+            <button className="ghost" onClick={() => print(current)}>Print invoice</button>
+          </div>
+          {current.unposted?.length ? <div className="notice" style={{ marginTop: 8 }}>Not yet posted: {current.unposted.join("; ")}</div> : null}
+        </section>
+      )}
+
+      <section className="card">
+        <h2>Ageing · outstanding {money(pos.outstanding, "KES")}</h2>
+        <div className="kpi">
+          <div><span>Current</span><strong>{money(pos.buckets.current, "")}</strong></div>
+          <div><span>1–30</span><strong>{money(pos.buckets["1-30"], "")}</strong></div>
+          <div><span>31–60</span><strong>{money(pos.buckets["31-60"], "")}</strong></div>
+          <div><span>60+</span><strong>{money(pos.buckets["60+"], "")}</strong></div>
+        </div>
+        {user && <p className="hint" style={{ marginTop: 8 }}>Credit exposure on this account: {money(exposure, "KES")} — this is the figure the credit gate uses, not the order value.</p>}
+      </section>
+    </>
+  );
+}
+
+function WarehouseView({ user }) {
+  const [lots, setLots] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [form, setForm] = useState({ sku: "", description: "", qty: "", lot: "", bin: "NBO-01-01-01", unitCost: "", expiresAt: "" });
+  const [alloc, setAlloc] = useState({ orderId: "", sku: "", qty: "" });
+  const [result, setResult] = useState(null);
+  const [msg, setMsg] = useState("");
+
+  const load = async () => {
+    setLots((await all(STORES.lots)) ?? []);
+    setOrders(((await all(STORES.orders)) ?? []).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)));
+  };
+  useEffect(() => { load(); }, []);
+
+  async function receive(e) {
+    e.preventDefault();
+    setMsg("");
+    try {
+      const lot = receiveLot({
+        sku: form.sku,
+        description: form.description || form.sku,
+        qty: Number(form.qty),
+        bin: form.bin,
+        lot: form.lot || null,
+        unitCost: Number(form.unitCost || 0),
+        expiresAt: form.expiresAt || null,
+      });
+      await saveQueued(STORES.lots, "lot", lot);
+      await flush();
+      await load();
+      setForm({ ...form, qty: "", lot: "" });
+      setMsg(`Received ${lot.qty} of ${lot.sku} into ${lot.bin}.`);
+    } catch (err) {
+      setMsg(err.message);
+    }
+  }
+
+  function doAllocate() {
+    setMsg("");
+    try {
+      const r = allocateStock(lots, { sku: alloc.sku, qty: Number(alloc.qty), orderId: alloc.orderId });
+      setResult({ ...r, pick: pickList(r.allocations) });
+      setMsg(r.complete ? `Allocated ${alloc.qty} to order ${String(alloc.orderId).slice(-6)}.` : `Short by ${r.shortfall} — allocated what exists.`);
+    } catch (err) {
+      setResult(null);
+      setMsg(err.message);
+    }
+  }
+
+  async function commitAllocation() {
+    if (!result) return;
+    for (const l of result.lots) await saveQueued(STORES.lots, "lot", l);
+    const order = orders.find((o) => o.id === alloc.orderId);
+    if (order) {
+      const updated = { ...order, allocations: [...(order.allocations ?? []), ...result.allocations], pickedQty: (order.pickedQty ?? 0) + result.allocations.reduce((a, x) => a + x.qty, 0) };
+      await saveOrder(updated);
+    }
+    await flush();
+    await load();
+    setMsg("Allocation committed to stock and to the order.");
+  }
+
+  const skus = [...new Set(lots.map((l) => l.sku))];
+  const positions = skus.map((sku) => stockPosition(lots, { sku }));
+
+  function printNote(kind) {
+    const order = orders.find((o) => o.id === alloc.orderId) ?? orders[0];
+    if (!order) return setMsg("Pick an order first.");
+    const w = window.open("", "_blank");
+    if (!w) return;
+    const html = kind === "delivery"
+      ? deliveryNoteHtml({ order, account: { name: order.accountId }, noteNumber: `DN-${Date.now().toString().slice(-6)}`, items: result?.pick ?? [] })
+      : packingListHtml({ order, account: { name: order.accountId }, listNumber: `PL-${Date.now().toString().slice(-6)}`, lots: result?.allocations ?? [] });
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+  }
+
+  return (
+    <>
+      <section className="card">
+        <h2>Receive into a bin</h2>
+        <form onSubmit={receive}>
+          <div className="grid">
+            <label className="field">SKU<input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} placeholder="SP450" /></label>
+            <label className="field">Description<input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Solar panel 450W" /></label>
+            <label className="field">Quantity<input type="number" min="1" value={form.qty} onChange={(e) => setForm({ ...form, qty: e.target.value })} /></label>
+            <label className="field">Lot<input value={form.lot} onChange={(e) => setForm({ ...form, lot: e.target.value })} placeholder="L-2026-11" /></label>
+            <label className="field">Bin<input value={form.bin} onChange={(e) => setForm({ ...form, bin: e.target.value })} /></label>
+            <label className="field">Unit cost<input type="number" min="0" value={form.unitCost} onChange={(e) => setForm({ ...form, unitCost: e.target.value })} /></label>
+            <label className="field">Expiry<input type="date" value={form.expiresAt} onChange={(e) => setForm({ ...form, expiresAt: e.target.value })} /></label>
+          </div>
+          <div className="row" style={{ marginTop: 10 }}><button className="primary" type="submit">Receive</button></div>
+        </form>
+        {msg && <div className="notice" style={{ marginTop: 8 }}>{msg}</div>}
+      </section>
+
+      <section className="card">
+        <h2>Stock position</h2>
+        {positions.length === 0 && <p className="hint">Nothing received yet.</p>}
+        <table className="lines">
+          <thead><tr><th>SKU</th><th className="num">On hand</th><th className="num">Allocated</th><th className="num">Expired</th><th className="num">Available</th><th className="num">Value</th><th>Statement</th></tr></thead>
+          <tbody>
+            {positions.map((p) => (
+              <tr key={p.sku}>
+                <td>{p.sku}</td>
+                <td className="num">{p.onHand}</td>
+                <td className="num">{p.allocated}</td>
+                <td className="num">{p.expired}</td>
+                <td className="num">{p.available}</td>
+                <td className="num">{money(p.value, "")}</td>
+                <td className="hint">{availabilityStatement(p)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+
+      <section className="card">
+        <h2>Allocate to an order</h2>
+        <div className="grid">
+          <label className="field">Order
+            <select value={alloc.orderId} onChange={(e) => setAlloc({ ...alloc, orderId: e.target.value })}>
+              <option value="">—</option>
+              {orders.map((o) => (<option key={o.id} value={o.id}>{o.id.slice(-6)} · {o.stage}</option>))}
+            </select>
+          </label>
+          <label className="field">SKU
+            <select value={alloc.sku} onChange={(e) => setAlloc({ ...alloc, sku: e.target.value })}>
+              <option value="">—</option>
+              {skus.map((s) => (<option key={s}>{s}</option>))}
+            </select>
+          </label>
+          <label className="field">Quantity<input type="number" min="1" value={alloc.qty} onChange={(e) => setAlloc({ ...alloc, qty: e.target.value })} /></label>
+        </div>
+        <div className="row" style={{ marginTop: 10 }}>
+          <button className="primary" onClick={doAllocate} disabled={!alloc.orderId || !alloc.sku}>Allocate</button>
+          {result && <button className="ghost" onClick={commitAllocation}>Commit allocation</button>}
+          <button className="ghost" onClick={() => printNote("delivery")}>Delivery note</button>
+          <button className="ghost" onClick={() => printNote("packing")}>Packing list</button>
+        </div>
+        {result?.pick?.length ? (
+          <table className="lines" style={{ marginTop: 10 }}>
+            <thead><tr><th>#</th><th>Bin</th><th>Lot</th><th>SKU</th><th className="num">Qty</th></tr></thead>
+            <tbody>
+              {result.pick.map((p) => (<tr key={p.seq}><td>{p.seq}</td><td>{p.bin}</td><td>{p.lot}</td><td>{p.sku}</td><td className="num">{p.qty}</td></tr>))}
+            </tbody>
+          </table>
+        ) : null}
+        {result?.skipped?.length ? <p className="hint" style={{ marginTop: 6 }}>Skipped: {result.skipped.map((s) => `${s.lot} (${s.why})`).join(", ")}</p> : null}
       </section>
     </>
   );

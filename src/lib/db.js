@@ -3,8 +3,8 @@
  * IndexedDB, no dependencies.
  */
 const DB_NAME = "cargolinx";
-const DB_VERSION = 4;
-export const STORES = { shipments: "shipments", orders: "orders", outbox: "outbox", conflicts: "conflicts", photos: "photos", server: "server", kv: "kv" };
+const DB_VERSION = 5;
+export const STORES = { shipments: "shipments", orders: "orders", invoices: "invoices", lots: "lots", outbox: "outbox", conflicts: "conflicts", photos: "photos", server: "server", kv: "kv" };
 
 let dbp = null;
 
@@ -18,6 +18,8 @@ export function openDb() {
       if (!db.objectStoreNames.contains(STORES.outbox)) db.createObjectStore(STORES.outbox, { keyPath: "idempotencyKey" });
       if (!db.objectStoreNames.contains(STORES.conflicts)) db.createObjectStore(STORES.conflicts, { keyPath: "id", autoIncrement: true });
       if (!db.objectStoreNames.contains(STORES.orders)) db.createObjectStore(STORES.orders, { keyPath: "id" });
+      if (!db.objectStoreNames.contains(STORES.invoices)) db.createObjectStore(STORES.invoices, { keyPath: "number" });
+      if (!db.objectStoreNames.contains(STORES.lots)) db.createObjectStore(STORES.lots, { keyPath: "id" });
       if (!db.objectStoreNames.contains(STORES.photos)) db.createObjectStore(STORES.photos, { keyPath: "id" });
       if (!db.objectStoreNames.contains(STORES.server)) db.createObjectStore(STORES.server, { keyPath: "id" });
       if (!db.objectStoreNames.contains(STORES.kv)) db.createObjectStore(STORES.kv, { keyPath: "k" });
@@ -92,6 +94,17 @@ export async function saveOrder(order, op = "upsert") {
   const { enqueue } = await import("./sync-core.mjs");
   const outbox = await all(STORES.outbox);
   const next = enqueue(outbox, { entity: "order", entityId: record.id, op, payload: record, at: record.updatedAt });
+  const added = next[next.length - 1];
+  if (added) await put(STORES.outbox, added);
+  return record;
+}
+
+/** Generic queued save for records that follow the same local-first contract. */
+export async function saveQueued(store, entity, record, keyField = "id") {
+  await put(store, record);
+  const { enqueue } = await import("./sync-core.mjs");
+  const outbox = await all(STORES.outbox);
+  const next = enqueue(outbox, { entity, entityId: String(record[keyField]), payload: record, at: new Date().toISOString() });
   const added = next[next.length - 1];
   if (added) await put(STORES.outbox, added);
   return record;

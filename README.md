@@ -72,6 +72,18 @@ Verified in the browser: "500 pcs solar panels under 120 usd to Kenya, HS 8541.4
 
 **Not modelled:** any de-minimis duty or VAT threshold for small parcels. No threshold is applied because none is verified for these lanes, and a wrong threshold silently misprices every parcel.
 
+## Money and stock (added 29 October 2026)
+
+- **Invoicing from posted cost.** A tax invoice cannot be issued before dispatch; a proforma can. The invoice is built from the order's recorded line values, never from the quotation that opened it, and a line with no posted value stops the invoice instead of invoicing zero. Charges that were actually incurred are added as their own lines.
+- **Honest gaps are printed on the document.** An invoice raised before the proof of delivery is on file says so, in the document itself.
+- **Payments.** Part payment and settlement move the status, overpayment is refused rather than absorbed, and every payment keeps its method and reference.
+- **Ageing by the buckets a credit controller works** — current, 1–30, 31–60, 60+ — and credit exposure is computed from unpaid balances, which is the figure the credit gate consumes, not the order value.
+- **Invoice numbering** runs sequentially inside a month, and a bank statement can be reconciled against the ledger by amount and reference, with the unmatched lines named.
+- **Stock is a promise only when it has a bin and a lot.** Receiving requires a bin; position separates on hand, allocated, expired and available; allocation is first-expiry-first-out, skips expired lots and states why, and reports a shortfall instead of silently part-filling.
+- **The pick list is ordered by bin** so a picker walks the aisle once, and a delivery note and packing list print from the same allocation — the delivery note carrying the platform's name, the invoice carrying the seller's.
+
+Verified in the browser: invoice INV-2610-0001 raised for 600,000 plus 96,000 VAT with "proof of delivery not yet on file" printed on it; a 300,000 M-PESA payment left 396,000 part paid and moved the ageing bucket; 60 units received into bin NBO-01-01-01 under lot L-2026-11; 50 allocated to the order, producing pick line 1 at that bin, leaving 10 on hand, 50 allocated and zero available, with the statement "No available stock of SP450 at the Nairobi warehouse". 121 tests pass.
+
 ## Not yet verified
 
 - The Meta model calls (photo counting, transcription, lane matching, explanation) are written against
