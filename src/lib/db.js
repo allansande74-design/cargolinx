@@ -3,8 +3,8 @@
  * IndexedDB, no dependencies.
  */
 const DB_NAME = "cargolinx";
-const DB_VERSION = 3;
-export const STORES = { shipments: "shipments", outbox: "outbox", conflicts: "conflicts", photos: "photos", server: "server", kv: "kv" };
+const DB_VERSION = 4;
+export const STORES = { shipments: "shipments", orders: "orders", outbox: "outbox", conflicts: "conflicts", photos: "photos", server: "server", kv: "kv" };
 
 let dbp = null;
 
@@ -17,6 +17,7 @@ export function openDb() {
       if (!db.objectStoreNames.contains(STORES.shipments)) db.createObjectStore(STORES.shipments, { keyPath: "id" });
       if (!db.objectStoreNames.contains(STORES.outbox)) db.createObjectStore(STORES.outbox, { keyPath: "idempotencyKey" });
       if (!db.objectStoreNames.contains(STORES.conflicts)) db.createObjectStore(STORES.conflicts, { keyPath: "id", autoIncrement: true });
+      if (!db.objectStoreNames.contains(STORES.orders)) db.createObjectStore(STORES.orders, { keyPath: "id" });
       if (!db.objectStoreNames.contains(STORES.photos)) db.createObjectStore(STORES.photos, { keyPath: "id" });
       if (!db.objectStoreNames.contains(STORES.server)) db.createObjectStore(STORES.server, { keyPath: "id" });
       if (!db.objectStoreNames.contains(STORES.kv)) db.createObjectStore(STORES.kv, { keyPath: "k" });
@@ -82,4 +83,16 @@ export async function savePhoto(blob, meta = {}) {
 
 export async function getPhoto(id) {
   return get(STORES.photos, id);
+}
+
+/** Persist an order and queue it, same contract as a shipment: local first, network later. */
+export async function saveOrder(order, op = "upsert") {
+  const record = { ...order, updatedAt: new Date().toISOString() };
+  await put(STORES.orders, record);
+  const { enqueue } = await import("./sync-core.mjs");
+  const outbox = await all(STORES.outbox);
+  const next = enqueue(outbox, { entity: "order", entityId: record.id, op, payload: record, at: record.updatedAt });
+  const added = next[next.length - 1];
+  if (added) await put(STORES.outbox, added);
+  return record;
 }

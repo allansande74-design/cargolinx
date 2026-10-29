@@ -31,8 +31,9 @@ explain a quote. **No model ever sets a price or a date.**
 - Offline: an ETA delay recorded with no network, page reloaded from the service worker with the data
   intact and one write queued; on reconnect `pushed 1, pulled 1`, outbox 0, one server row, no
   duplicate, local record intact.
-- 28 automated tests pass (`npm test`): engine maths, refusal below the margin floor, ETA change
-  history, outbox idempotency, conflict resolution, document content.
+- Engine maths, refusal below the margin floor, ETA change history, outbox idempotency, conflict
+  resolution, document content, tariff and PVoC rules, dossier guards, account scoping, order-stage
+  guards, goods-received variance and LocoNav payload mapping — 78 tests (`npm test`).
 
 ## Tariff, conformity and clearance (added 29 October 2026)
 
@@ -42,6 +43,20 @@ explain a quote. **No model ever sets a price or a date.**
 - **Document dossier per consignment.** Commercial invoice, packing list, transport document, insurance, certificate of origin (Chamber of Commerce, or the EAC certificate), PVoC certificate (KEBS agent), phytosanitary certificate (KEPHIS) for plant-product chapters, transit bond, entry and duty receipt. Each document carries its issuer and a missing/attached/verified state; verifying something that was never attached is refused.
 - **Clearance systems stated honestly.** Kenya: KRA iCMS, iTax, KenTrade TradeNet — file prepared and pre-validated here, lodged by a licensed agent. Uganda, Tanzania, Rwanda, Burundi, South Sudan and DR Congo are in the registry marked "to confirm" until access is verified with each revenue authority. No filing API is claimed anywhere.
 - **Express corridor score.** Green, yellow or red from document verification, duty evidence, PVoC status and trusted-trader standing, with the reasons printed.
+
+## Accounts, orders and last mile (added 29 October 2026)
+
+- **Accounts and roles.** A trading company opens an account with terms (prepayment, net 15, net 30) and a credit limit; users are invited as client administrator, client user, operations, driver or platform administrator. Every read is scoped by account: a client user cannot see another client's records, and an administrator sees everything.
+- **Credit control before acceptance.** A prepayment account must fund before dispatch; a credit account is capped. An order over the limit is held with the shortfall stated, not quietly accepted.
+- **Order lifecycle.** Draft → confirmed → sourcing → purchased → freight booked → in transit → arrived → received at the Nairobi warehouse → picked → packed → dispatched → delivered. Each stage refuses to open without the data that makes it true: no purchase without supplier, PO and value; no receipt without a goods-received note and counts; no dispatch without a vehicle, a driver and a tracking reference; no delivery without a named signature.
+- **Dropship is a different flow, not a different system.** A dropship order skips the warehouse stages entirely and goes from arrival to dispatch.
+- **Goods received states variance.** Over, short and damaged are recorded per line and summarised; a short delivery is never rounded into a clean receipt.
+- **Two legal entities, one platform.** Quotations, invoices and purchase orders carry Altovex Global Logistics Co. Ltd; tracking, customs files and proofs of delivery carry Altovex CargoLinx. The header is chosen by the document, not by the user.
+- **Last mile through LocoNav.** Adapter written against LocoNav's developer documentation (host per region, `User-Authentication` token header, epoch-second time parameters, pagination object). With no token every call reports "not configured" and the desk shows no position rather than a guess. Webhook payloads are normalised defensively, and a fix older than fifteen minutes is labelled stale instead of live.
+
+### Verified against a real run (29 October 2026)
+
+Account opened with net 30 and a KES 1,000,000 limit; a KES 2,400,000 order was **held** ("exceeds credit headroom by 1,400,000"); a KES 600,000 order was accepted; the pipeline was walked stage by stage to delivered, with the guards firing on cue (delivery refused until a signatory was named); dispatch created a last-mile job against vehicle KDG 123A; a GPS payload parsed to a valid fix and was correctly reported as stale at 4,688 minutes old. 78 tests pass.
 
 ## Not yet verified
 

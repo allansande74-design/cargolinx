@@ -1,13 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { landedCost, quote, floorPrice, KE_RATES } from "../engine/landed.mjs";
 import { planEta, applyEvent } from "../engine/eta.mjs";
-import { STORES, all, put, saveShipment, savePhoto, getPhoto, newId, kvGet } from "./lib/db.js";
+import { STORES, all, put, saveShipment, saveOrder, savePhoto, getPhoto, newId, kvGet, kvSet } from "./lib/db.js";
 import { flush, queueDepth, getConfig, setConfig } from "./lib/sync.js";
 import { probe, readCargoPhoto, transcribeVoice, explainQuote, getModelConfig, setModelConfig } from "./lib/meta.js";
 import { quoteHtml } from "./lib/quote-doc.mjs";
 import { dutyTreatment, pvocFee, pvocApplicable, resolveHS, waiverAdjustment, EAC_MEMBERS, WAIVER_TYPES, FX } from "../engine/tariff.mjs";
 import { buildDossier, dossierStatus, setDocStatus } from "../engine/docs.mjs";
 import { country, integrationState, expressReadiness, COUNTRY_EXTRAS } from "../engine/countries.mjs";
+import { createAccount, createUser, can, assertCan, scoped, documentHeader, creditDecision, ROLES } from "../engine/accounts.mjs";
+import { createOrder, advance, nextStage, blockersFor, receiveGoods, dispatch as dispatchOrder, deliver as deliverOrder, slaState, STAGES as ORDER_STAGES, ORDER_TYPES } from "../engine/orders.mjs";
+import { config as loconavConfig, probe as loconavProbe, parseWebhook, trackingState, LOCONAV } from "../engine/loconav.mjs";
 
 const money = (n, ccy = "KES") =>
   `${ccy} ${Number(n || 0).toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -65,6 +68,8 @@ export default function App() {
   const [model, setModel] = useState({ live: false, reason: "checking" });
   const [selectedId, setSelectedId] = useState(null);
   const [busy, setBusy] = useState("");
+  const [user, setUser] = useState(null);
+  const [accounts, setAccounts] = useState([]);
 
   async function refresh() {
     setShipments(((await all(STORES.shipments)) ?? []).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)));
@@ -75,6 +80,8 @@ export default function App() {
 
   useEffect(() => {
     refresh();
+    kvGet("session").then(setUser);
+    kvGet("accounts", []).then(setAccounts);
     probe().then(setModel);
     const on = () => setOnline(true);
     const off = () => setOnline(false);
@@ -114,6 +121,8 @@ export default function App() {
           ["quote", "Quote"],
           ["track", "Tracking & POD"],
           ["compliance", "Compliance"],
+          ["orders", "Orders"],
+          ["accounts", "Accounts"],
           ["settings", "Setup"],
         ].map(([k, label]) => (
           <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}>
@@ -127,6 +136,8 @@ export default function App() {
         {tab === "quote" && <QuoteView shipment={selected} shipments={shipments} onPick={setSelectedId} onChange={refresh} model={model} />}
         {tab === "track" && <TrackView shipment={selected} shipments={shipments} onPick={setSelectedId} onChange={refresh} />}
         {tab === "compliance" && <ComplianceView shipment={selected} shipments={shipments} onPick={setSelectedId} onChange={refresh} />}
+        {tab === "orders" && <OrdersView user={user} accounts={accounts} />}
+        {tab === "accounts" && <AccountsView user={user} accounts={accounts} setAccounts={setAccounts} setUser={setUser} />}
         {tab === "settings" && <Settings backend={backend} model={model} onChanged={async () => { await refresh(); probe().then(setModel); }} queue={queue} onSync={syncNow} busy={busy} />}
       </main>
 
@@ -832,6 +843,318 @@ function ComplianceView({ shipment, shipments, onPick, onChange }) {
         <p className="hint" style={{ marginTop: 6 }}>
           Regional partners in the file: {COUNTRY_EXTRAS.KE.length ? "KE standards permit required" : "no extras"} · Uganda, Tanzania, Rwanda, Burundi, South Sudan and DR Congo each carry their own systems and are marked "to confirm" until we verify access with the revenue authority.
         </p>
+      </section>
+    </>
+  );
+}
+
+function AccountsView({ user, accounts, setAccounts, setUser }) {
+  const [form, setForm] = useState({ name: "", country: "KE", terms: "prepayment", credit: "" });
+  const [invite, setInvite] = useState({ name: "", email: "", role: "client_admin" });
+  const [msg, setMsg] = useState("");
+
+  async function addAccount(e) {
+    e.preventDefault();
+    setMsg("");
+    try {
+      const acc = createAccount({ name: form.name, country: form.country, terms: form.terms, creditLimitKes: Number(form.credit || 0) });
+      const next = [...accounts, { ...acc, users: [] }];
+      setAccounts(next);
+      await kvSet("accounts", next);
+      setForm({ name: "", country: "KE", terms: "prepayment", credit: "" });
+      setMsg(`${acc.name} opened an account. ${acc.terms === "prepayment" ? "Funds required before dispatch." : `Credit limit ${money(acc.creditLimitKes)}.`}`);
+    } catch (err) {
+      setMsg(err.message);
+    }
+  }
+
+  async function addUser(accountId) {
+    setMsg("");
+    try {
+      const u = createUser({ accountId, name: invite.name, email: invite.email, role: invite.role });
+      const next = accounts.map((a) => (a.id === accountId ? { ...a, users: [...(a.users ?? []), u] } : a));
+      setAccounts(next);
+      await kvSet("accounts", next);
+      setInvite({ name: "", email: "", role: "client_admin" });
+      setMsg(`Invitation created for ${u.email}.`);
+    } catch (err) {
+      setMsg(err.message);
+    }
+  }
+
+  async function signIn(u) {
+    await kvSet("session", u);
+    setUser(u);
+    setMsg(`Signed in as ${u.name || u.email} (${ROLES[u.role].label}).`);
+  }
+
+  async function signOut() {
+    await kvSet("session", null);
+    setUser(null);
+  }
+
+  return (
+    <>
+      <section className="card">
+        <h2>Open an account</h2>
+        <p className="hint">
+          Accounts trade with {documentHeader("quotation").name}; the platform ({(documentHeader("tracking").name)}) matches freight and tracks the last mile.
+        </p>
+        <form onSubmit={addAccount}>
+          <div className="grid" style={{ marginTop: 10 }}>
+            <label className="field">Company name<input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ndumbuki Enterprises" /></label>
+            <label className="field">Country
+              <select value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })}>
+                {Object.keys(EAC_MEMBERS).map((c) => (<option key={c}>{c}</option>))}
+              </select>
+            </label>
+            <label className="field">Terms
+              <select value={form.terms} onChange={(e) => setForm({ ...form, terms: e.target.value })}>
+                <option value="prepayment">Prepayment</option>
+                <option value="net15">Net 15</option>
+                <option value="net30">Net 30</option>
+              </select>
+            </label>
+            <label className="field">Credit limit (KES)<input type="number" min="0" value={form.credit} onChange={(e) => setForm({ ...form, credit: e.target.value })} placeholder="0" /></label>
+          </div>
+          <div className="row" style={{ marginTop: 10 }}><button className="primary" type="submit">Open account</button></div>
+        </form>
+        {msg && <div className="notice" style={{ marginTop: 10 }}>{msg}</div>}
+      </section>
+
+      <section className="card">
+        <h2>Accounts and users</h2>
+        {accounts.length === 0 && <p className="hint">No accounts yet.</p>}
+        {accounts.map((a) => (
+          <div key={a.id} style={{ borderTop: "1px solid var(--line)", paddingTop: 10, marginTop: 10 }}>
+            <div className="row">
+              <strong>{a.name}</strong>
+              <span className="pill ok">{a.terms}</span>
+              <span className="hint">{a.country} · credit {money(a.creditLimitKes)}</span>
+            </div>
+            <ul className="hint" style={{ marginTop: 6 }}>
+              {(a.users ?? []).map((u) => (
+                <li key={u.id}>
+                  {u.name || u.email} · {ROLES[u.role].label} · {u.status}{" "}
+                  <button className="ghost" onClick={() => signIn(u)} style={{ padding: "2px 8px", fontSize: 12 }}>Sign in as</button>
+                </li>
+              ))}
+            </ul>
+            <div className="row" style={{ marginTop: 6 }}>
+              <input placeholder="Name" value={invite.name} onChange={(e) => setInvite({ ...invite, name: e.target.value })} style={{ maxWidth: 160 }} />
+              <input placeholder="email@company.co.ke" value={invite.email} onChange={(e) => setInvite({ ...invite, email: e.target.value })} style={{ maxWidth: 220 }} />
+              <select value={invite.role} onChange={(e) => setInvite({ ...invite, role: e.target.value })} style={{ maxWidth: 190 }}>
+                {Object.entries(ROLES).map(([k, v]) => (<option key={k} value={k}>{v.label}</option>))}
+              </select>
+              <button className="ghost" onClick={() => addUser(a.id)}>Invite user</button>
+            </div>
+          </div>
+        ))}
+      </section>
+
+      <section className="card">
+        <h2>Session</h2>
+        {user ? (
+          <div className="row">
+            <span className="pill ok">{ROLES[user.role].label}</span>
+            <span className="hint">{user.name || user.email} · account {accounts.find((a) => a.id === user.accountId)?.name ?? user.accountId}</span>
+            <button className="ghost" onClick={signOut}>Sign out</button>
+          </div>
+        ) : (
+          <p className="hint">Signed out. Pick a user above to sign in. Sessions are local to this device until the backend is connected.</p>
+        )}
+      </section>
+    </>
+  );
+}
+
+function OrdersView({ user, accounts }) {
+  const [orders, setOrders] = useState([]);
+  const [selected, setSelected] = useState(null);
+  const [draft, setDraft] = useState({ type: "import", description: "", qty: 1, unitValue: "", promisedAt: "" });
+  const [stageData, setStageData] = useState({});
+  const [msg, setMsg] = useState("");
+  const [lonToken, setLonToken] = useState("");
+  const [lonRegion, setLonRegion] = useState("global");
+  const [lonState, setLonState] = useState({ configured: false, detail: "not checked" });
+  const [hook, setHook] = useState("");
+  const [fix, setFix] = useState(null);
+
+  const load = async () => {
+    const allOrders = (await all(STORES.orders)) ?? [];
+    setOrders(allOrders.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)));
+  };
+  useEffect(() => { load(); loconavProbe(loconavConfig({ region: lonRegion })).then(setLonState); }, []);
+
+  if (!user) return <section className="card"><h2>Orders</h2><p className="hint">Sign in on the Accounts tab to place or manage orders.</p></section>;
+
+  const mine = scoped(orders, user);
+  const order = selected ? mine.find((o) => o.id === selected) : mine[0] ?? null;
+  const account = accounts.find((a) => a.id === user.accountId);
+
+  async function placeOrder(e) {
+    e.preventDefault();
+    setMsg("");
+    try {
+      const lines = [{ description: draft.description, qty: Number(draft.qty), unitValue: Number(draft.unitValue) }];
+      const o = createOrder({ accountId: user.accountId, type: draft.type, lines, promisedAt: draft.promisedAt || null });
+      const decision = creditDecision({ account, orderValueKes: o.valueKes, outstandingKes: 0 });
+      if (!decision.approved) return setMsg(`Order held: ${decision.reason}`);
+      await saveOrder(o);
+      await flush();
+      await load();
+      setSelected(o.id);
+      setDraft({ type: "import", description: "", qty: 1, unitValue: "", promisedAt: "" });
+      setMsg(`Order placed. ${decision.reason}`);
+    } catch (err) {
+      setMsg(err.message);
+    }
+  }
+
+  async function step(o, target) {
+    setMsg("");
+    try {
+      let next = o;
+      if (target === "received") {
+        next = receiveGoods(o, { grnRef: stageData.grnRef, receipts: o.lines.map((l) => ({ description: l.description, qty: Number(stageData.receivedQty ?? l.qty) })) });
+        next = advance(next, { ...stageData, stage: "received", note: `GRN ${stageData.grnRef}` });
+      } else if (target === "dispatched") {
+        const { order: dispatched, job } = dispatchOrder(o, { vehicleId: stageData.vehicleId, driverName: stageData.driverName, trackingRef: stageData.trackingRef });
+        next = dispatched;
+        setMsg(`Last-mile job created: ${job.id} · vehicle ${job.vehicleId}`);
+      } else if (target === "delivered") {
+        next = deliverOrder(o, { signedBy: stageData.signedBy });
+      } else {
+        next = advance(o, { ...stageData, stage: target });
+      }
+      await saveOrder(next);
+      await flush();
+      await load();
+      setStageData({});
+    } catch (err) {
+      setMsg(err.message);
+    }
+  }
+
+  const target = order ? nextStage(order) : null;
+  const needs = order && target ? (blockersFor(order, target).missing ?? []) : [];
+  const sla = order ? slaState(order) : null;
+
+  async function saveToken() {
+    await kvSet("loconav", { region: lonRegion, token: lonToken });
+    const st = await loconavProbe(loconavConfig({ region: lonRegion, token: lonToken }));
+    setLonState(st);
+  }
+
+  return (
+    <>
+      <section className="card">
+        <h2>Place an order</h2>
+        <form onSubmit={placeOrder}>
+          <div className="grid">
+            <label className="field">Type
+              <select value={draft.type} onChange={(e) => setDraft({ ...draft, type: e.target.value })}>
+                {Object.entries(ORDER_TYPES).map(([k, v]) => (<option key={k} value={k}>{v.label}</option>))}
+              </select>
+            </label>
+            <label className="field">Item<input value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} placeholder="Solar panels 450W" /></label>
+            <label className="field">Quantity<input type="number" min="1" value={draft.qty} onChange={(e) => setDraft({ ...draft, qty: e.target.value })} /></label>
+            <label className="field">Unit value (KES)<input type="number" min="0" value={draft.unitValue} onChange={(e) => setDraft({ ...draft, unitValue: e.target.value })} /></label>
+            <label className="field">Promised date<input type="date" value={draft.promisedAt} onChange={(e) => setDraft({ ...draft, promisedAt: e.target.value })} /></label>
+          </div>
+          <div className="row" style={{ marginTop: 10 }}>
+            <button className="primary" type="submit" disabled={!can(user.role, "order.create")}>Place order</button>
+            {!can(user.role, "order.create") && <span className="hint">This role cannot place orders.</span>}
+          </div>
+        </form>
+        {msg && <div className="notice" style={{ marginTop: 10 }}>{msg}</div>}
+      </section>
+
+      <section className="card">
+        <h2>Orders · {mine.length}</h2>
+        {mine.length === 0 && <p className="hint">No orders yet.</p>}
+        <table className="lines">
+          <thead><tr><th>Reference</th><th>Type</th><th className="num">Value</th><th>Stage</th><th>Promise</th></tr></thead>
+          <tbody>
+            {mine.map((o) => (
+              <tr key={o.id} onClick={() => setSelected(o.id)} style={{ cursor: "pointer" }}>
+                <td>{o.id.slice(-6)}</td>
+                <td>{ORDER_TYPES[o.type].label.split(" — ")[0]}</td>
+                <td className="num">{money(o.valueKes, "")}</td>
+                <td>{o.stage}</td>
+                <td className="hint">{slaState(o).status}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+
+      {order && (
+        <section className="card">
+          <h2>Order {order.id.slice(-6)} · {order.stage}</h2>
+          <div className="kpi">
+            <div><span>Value</span><strong>{money(order.valueKes)}</strong></div>
+            <div><span>Promise</span><strong>{sla.promisedAt ? new Date(sla.promisedAt).toLocaleDateString("en-GB") : "none"}</strong></div>
+            <div><span>SLA</span><strong className={sla.status.includes("late") ? "bad" : ""}>{sla.status}</strong></div>
+            <div><span>Type</span><strong style={{ fontSize: 13 }}>{ORDER_TYPES[order.type].label}</strong></div>
+          </div>
+
+          <h3>Pipeline</h3>
+          <ul className="timeline">
+            {ORDER_STAGES.filter((s) => ORDER_TYPES[order.type].usesWarehouse || !s.warehouseOnly).map((s) => (
+              <li key={s.key} style={{ borderLeftColor: order.stage === s.key ? "var(--gold)" : undefined }}>
+                <strong>{s.label}</strong> {order.history?.filter((h) => h.stage === s.key).slice(-1).map((h) => <span className="when" key={h.at}> · {new Date(h.at).toLocaleString("en-GB")} {h.note}</span>)}
+              </li>
+            ))}
+          </ul>
+
+          {target && (
+            <>
+              <h3>Next step — {ORDER_STAGES.find((s) => s.key === target).label}</h3>
+              <div className="grid">
+                {needs.map((k) => (
+                  <label className="field" key={k}>{k}
+                    <input value={stageData[k] ?? ""} onChange={(e) => setStageData({ ...stageData, [k]: k === "purchaseValue" ? Number(e.target.value) : e.target.value })} />
+                  </label>
+                ))}
+              </div>
+              <div className="row" style={{ marginTop: 10 }}>
+                <button className="primary" onClick={() => step(order, target)} disabled={!can(user.role, "order.advance")}>Advance to {target}</button>
+                {needs.length > 0 && <span className="hint">Required: {needs.join(", ")}</span>}
+              </div>
+            </>
+          )}
+          {!target && <p className="hint">This order is delivered. The file is closed.</p>}
+        </section>
+      )}
+
+      <section className="card">
+        <h2>Last-mile tracking (LocoNav)</h2>
+        <div className="grid">
+          <label className="field">Region
+            <select value={lonRegion} onChange={(e) => setLonRegion(e.target.value)}>
+              {Object.keys(LOCONAV.hosts).map((r) => (<option key={r}>{r}</option>))}
+            </select>
+          </label>
+          <label className="field">User token<input type="password" value={lonToken} onChange={(e) => setLonToken(e.target.value)} placeholder={lonState.configured ? "configured" : "issued by the LocoNav SPOC"} /></label>
+        </div>
+        <div className="row" style={{ marginTop: 10 }}>
+          <button className="ghost" onClick={saveToken}>Save and probe</button>
+          <span className={`pill ${lonState.configured && lonState.reachable ? "ok" : "warn"}`}>{lonState.configured ? (lonState.reachable ? "reachable" : "not reachable") : "not configured"}</span>
+          <span className="hint">{lonState.detail}</span>
+        </div>
+        <p className="hint" style={{ marginTop: 8 }}>
+          Position comes from the vehicle, never from the app. Until a token is in place the desk shows no location rather than a guess. Video telematics and live stream are listed in the adapter and are marked "confirm" with the SPOC.
+        </p>
+        <div className="grid" style={{ marginTop: 10 }}>
+          <label className="field" style={{ gridColumn: "1 / -1" }}>Paste a GPS or alert webhook to test the mapping
+            <textarea rows="3" value={hook} onChange={(e) => setHook(e.target.value)} placeholder='{"vehicleId":"KDG 123A","lat":-1.2921,"lng":36.8219,"speed":54,"timestamp":1793000000}' />
+          </label>
+        </div>
+        <div className="row" style={{ marginTop: 8 }}>
+          <button className="ghost" onClick={() => setFix(parseWebhook(JSON.parse(hook || "{}")))}>Parse payload</button>
+          {fix && <span className="hint">{JSON.stringify({ valid: fix.valid, vehicleId: fix.vehicleId, at: fix.at, ...trackingState({ lastFix: fix }) })}</span>}
+        </div>
       </section>
     </>
   );
