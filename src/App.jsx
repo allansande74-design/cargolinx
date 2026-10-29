@@ -11,6 +11,8 @@ import { country, integrationState, expressReadiness, COUNTRY_EXTRAS } from "../
 import { createAccount, createUser, can, assertCan, scoped, documentHeader, creditDecision, ROLES } from "../engine/accounts.mjs";
 import { createOrder, advance, nextStage, blockersFor, receiveGoods, dispatch as dispatchOrder, deliver as deliverOrder, slaState, STAGES as ORDER_STAGES, ORDER_TYPES } from "../engine/orders.mjs";
 import { config as loconavConfig, probe as loconavProbe, parseWebhook, trackingState, LOCONAV } from "../engine/loconav.mjs";
+import { parseSpec, compareOffers, dropshipDecision, rfqDraft, landedPerUnit } from "../engine/sourcing.mjs";
+import { list as listPlugins, status as pluginStatus, configure as configurePlugin, dryRun, supports as pluginSupports, get as getPlugin } from "../engine/plugins.mjs";
 
 const money = (n, ccy = "KES") =>
   `${ccy} ${Number(n || 0).toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -121,7 +123,9 @@ export default function App() {
           ["quote", "Quote"],
           ["track", "Tracking & POD"],
           ["compliance", "Compliance"],
+          ["source", "Sourcing"],
           ["orders", "Orders"],
+          ["plugins", "Plugins"],
           ["accounts", "Accounts"],
           ["settings", "Setup"],
         ].map(([k, label]) => (
@@ -136,7 +140,9 @@ export default function App() {
         {tab === "quote" && <QuoteView shipment={selected} shipments={shipments} onPick={setSelectedId} onChange={refresh} model={model} />}
         {tab === "track" && <TrackView shipment={selected} shipments={shipments} onPick={setSelectedId} onChange={refresh} />}
         {tab === "compliance" && <ComplianceView shipment={selected} shipments={shipments} onPick={setSelectedId} onChange={refresh} />}
+        {tab === "source" && <SourcingView />}
         {tab === "orders" && <OrdersView user={user} accounts={accounts} />}
+        {tab === "plugins" && <PluginsView />}
         {tab === "accounts" && <AccountsView user={user} accounts={accounts} setAccounts={setAccounts} setUser={setUser} />}
         {tab === "settings" && <Settings backend={backend} model={model} onChanged={async () => { await refresh(); probe().then(setModel); }} queue={queue} onSync={syncNow} busy={busy} />}
       </main>
@@ -1155,6 +1161,186 @@ function OrdersView({ user, accounts }) {
           <button className="ghost" onClick={() => setFix(parseWebhook(JSON.parse(hook || "{}")))}>Parse payload</button>
           {fix && <span className="hint">{JSON.stringify({ valid: fix.valid, vehicleId: fix.vehicleId, at: fix.at, ...trackingState({ lastFix: fix }) })}</span>}
         </div>
+      </section>
+    </>
+  );
+}
+
+function SourcingView() {
+  const [text, setText] = useState("I need 500 pcs solar panels under 120 usd to Kenya, HS 8541.43");
+  const [offersRaw, setOffersRaw] = useState('[{"supplier":"Shenzhen A","tiers":[{"minQty":1000,"unitPrice":14}],"leadTimeDays":35,"shipsTo":["KE"],"rating":4.2},{"supplier":"Ningbo B","tiers":[{"minQty":100,"unitPrice":18.5},{"minQty":500,"unitPrice":17}],"leadTimeDays":18,"shipsTo":["KE"],"rating":4.8,"certifications":["CE"]}]');
+  const [decision, setDecision] = useState(null);
+  const [err, setErr] = useState("");
+
+  const spec = parseSpec(text);
+  let offers = [];
+  try {
+    offers = JSON.parse(offersRaw || "[]");
+  } catch {
+    offers = [];
+  }
+  const ranked = offers.length ? compareOffers(offers, { qty: spec.qty ?? 1, budget: spec.budget, destination: spec.destination ?? "KE" }) : [];
+
+  function runDecision() {
+    setErr("");
+    try {
+      const d = dropshipDecision({ demandPerMonth: Number(spec.qty || 100) / 2, moq: 1000, unitPriceBulk: 15, unitPriceDropship: 22, freightBulk: 800, freightDropship: 6, dutyRate: 0.25 });
+      setDecision(d);
+    } catch (e) {
+      setErr(e.message);
+    }
+  }
+
+  return (
+    <>
+      <section className="card">
+        <h2>Sourcing brief</h2>
+        <label className="field" style={{ marginBottom: 10 }}>
+          What the client asked for
+          <textarea rows="2" value={text} onChange={(e) => setText(e.target.value)} />
+        </label>
+        <div className="kpi">
+          <div><span>Product</span><strong style={{ fontSize: 14 }}>{spec.product ?? "—"}</strong></div>
+          <div><span>Quantity</span><strong>{spec.qty ? `${spec.qty} ${spec.qtyUnit}` : "not stated"}</strong></div>
+          <div><span>Budget</span><strong>{spec.budget ? `${spec.currency} ${spec.budget}` : "none"}</strong></div>
+          <div><span>Destination</span><strong>{spec.destination ?? "—"}</strong></div>
+          <div><span>HS hint</span><strong>{spec.hsHint ?? "—"}</strong></div>
+        </div>
+        <p className="hint" style={{ marginTop: 8 }}>
+          {spec.complete ? "Brief is complete enough to send to suppliers." : "A quantity is missing — the brief is not complete and no RFQ will be issued until it is."}
+        </p>
+      </section>
+
+      <section className="card">
+        <h2>Offers compared</h2>
+        <label className="field" style={{ marginBottom: 10 }}>
+          Offers returned by a supplier plugin or pasted by the buyer (JSON)
+          <textarea rows="4" value={offersRaw} onChange={(e) => setOffersRaw(e.target.value)} />
+        </label>
+        {ranked.length === 0 && <p className="hint">No offers to compare yet.</p>}
+        <table className="lines">
+          <thead><tr><th>Supplier</th><th className="num">Unit</th><th className="num">Lead days</th><th className="num">Score</th><th>Verdict</th></tr></thead>
+          <tbody>
+            {ranked.map((r) => (
+              <tr key={r.supplier}>
+                <td>{r.supplier}</td>
+                <td className="num">{r.unitPrice ?? "—"}</td>
+                <td className="num">{r.leadTimeDays ?? "—"}</td>
+                <td className="num">{r.score}</td>
+                <td><span className={`pill ${r.verdict === "shortlist" ? "ok" : r.verdict === "consider" ? "warn" : "bad"}`}>{r.verdict}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {ranked[0]?.reasons?.length ? <p className="hint" style={{ marginTop: 8 }}>Why {ranked[0].supplier}: {ranked[0].reasons.join("; ")}</p> : null}
+      </section>
+
+      <section className="card">
+        <h2>Dropship or hold stock</h2>
+        <div className="row">
+          <button className="ghost" onClick={runDecision}>Run the arithmetic</button>
+          <span className="hint">Uses monthly demand derived from the brief, a MOQ of 1,000, and bulk vs dropship unit prices.</span>
+        </div>
+        {decision && (
+          <div style={{ marginTop: 10 }}>
+            <div className="kpi">
+              <div><span>Recommendation</span><strong>{decision.recommendation}</strong></div>
+              <div><span>Bulk per unit</span><strong>{decision.bulkPerUnit}</strong></div>
+              <div><span>Dropship per unit</span><strong>{decision.dropshipPerUnit}</strong></div>
+              <div><span>Cash tied up</span><strong>{money(decision.cashTiedKes, "")}</strong></div>
+            </div>
+            <p className="hint" style={{ marginTop: 8 }}>{decision.why} · MOQ covers {decision.monthsOfCover} months of demand.</p>
+          </div>
+        )}
+        {err && <div className="notice bad" style={{ marginTop: 8 }}>{err}</div>}
+      </section>
+
+      <section className="card">
+        <h2>RFQ draft</h2>
+        <p className="hint">Written from the brief. Copy it to the supplier as it stands, or adjust the quantities first.</p>
+        <pre style={{ whiteSpace: "pre-wrap", fontSize: 12, background: "#f3f7fb", border: "1px solid var(--line)", padding: 12, borderRadius: 8, marginTop: 8 }}>
+{rfqDraft(spec)}
+        </pre>
+      </section>
+    </>
+  );
+}
+
+function PluginsView() {
+  const [plugins, setPlugins] = useState(listPlugins());
+  const [fields, setFields] = useState({});
+  const [msg, setMsg] = useState("");
+
+  function refresh() { setPlugins(listPlugins()); }
+
+  function save(id) {
+    const manifest = getPlugin(id);
+    const config = {};
+    for (const r of manifest.requires) config[r.key] = (fields[id]?.[r.key] ?? "").trim();
+    const st = configurePlugin(id, config, { enabled: true });
+    refresh();
+    setMsg(`${manifest.name}: ${st.state}`);
+  }
+
+  return (
+    <>
+      {plugins.map((p) => {
+        const st = pluginStatus(p.id);
+        return (
+          <section className="card" key={p.id}>
+            <div className="row">
+              <h2 style={{ margin: 0 }}>{p.name}</h2>
+              <span className={`pill ${st.state === "ready" ? "ok" : st.state === "not-configured" ? "warn" : "bad"}`}>{st.state}</span>
+            </div>
+            <p className="hint" style={{ marginTop: 6 }}>{p.model}</p>
+            <p className="hint">Capabilities: {p.capabilities.join(", ")}</p>
+            {p.requires.length > 0 && (
+              <div className="grid" style={{ marginTop: 8 }}>
+                {p.requires.map((r) => (
+                  <label className="field" key={r.key}>
+                    {r.label}
+                    <input
+                      type="password"
+                      placeholder={r.how}
+                      value={fields[p.id]?.[r.key] ?? ""}
+                      onChange={(e) => setFields({ ...fields, [p.id]: { ...(fields[p.id] ?? {}), [r.key]: e.target.value } })}
+                    />
+                  </label>
+                ))}
+              </div>
+            )}
+            <div className="row" style={{ marginTop: 8 }}>
+              <button className="ghost" onClick={() => save(p.id)}>Enable and save</button>
+              <button
+                className="ghost"
+                onClick={() => {
+                  try {
+                    const d = dryRun(p.id, p.capabilities[0], { sample: true });
+                    setMsg(`${p.name} dry run → ${d.request.method} ${d.request.host} (signed ${d.request.signed}), credentials present: ${d.credentialsPresent}`);
+                  } catch (e) {
+                    setMsg(e.message);
+                  }
+                }}
+              >
+                Show the request it would send
+              </button>
+            </div>
+            {p.notes?.length ? (
+              <ul className="hint" style={{ marginTop: 8 }}>
+                {p.notes.map((n, i) => (<li key={i}>{n}</li>))}
+              </ul>
+            ) : null}
+            <p className="hint" style={{ marginTop: 6 }}>Documentation: {p.docs}</p>
+          </section>
+        );
+      })}
+      {msg && <div className="notice">{msg}</div>}
+      <section className="card">
+        <h2>How these fit the desk</h2>
+        <p className="hint">
+          Sourcing plugins bring offers in. The sourcing module compares them on your terms — quantity, budget, lead time, certificates and whether they ship here — and the order pipeline takes over from the purchase onwards. Dropship orders skip the warehouse; stock orders land in Nairobi.
+          A plugin without credentials shows the request it would send and nothing else. No catalogue, no price and no supplier is ever invented.
+        </p>
       </section>
     </>
   );

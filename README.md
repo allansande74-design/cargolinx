@@ -58,6 +58,20 @@ explain a quote. **No model ever sets a price or a date.**
 
 Account opened with net 30 and a KES 1,000,000 limit; a KES 2,400,000 order was **held** ("exceeds credit headroom by 1,400,000"); a KES 600,000 order was accepted; the pipeline was walked stage by stage to delivered, with the guards firing on cue (delivery refused until a signatory was named); dispatch created a last-mile job against vehicle KDG 123A; a GPS payload parsed to a valid fix and was correctly reported as stale at 4,688 minutes old. 78 tests pass.
 
+## Sourcing and dropship plugins (added 29 October 2026)
+
+Studied from the platforms' own documentation:
+
+- **Alibaba.com Dropshipping** is an ISV programme, not a public API. A buyer account is registered at openapi.alibaba.com outside mainland China, an application is created in the App Console with category `ISV-Dropshipping` to obtain an AppKey and AppSecret, API permission groups are requested explicitly, buyers authorise through OAuth 2.0 code-for-token (`/auth/token/create`, `/auth/token/refresh`), products and seller warehouses are listed with freight estimates, BuyNow orders are created and the payment result is polled, and events arrive as HMAC-SHA256 signed webhooks that must be de-duplicated.
+- **AliExpress Dropshipping Center** pairs with the AE-Dropshipper API family (offer lookup, order detail, freight calculation) behind the same AppKey/AppSecret plus a seller-authorised token.
+- **Accio** is Alibaba International's AI sourcing engine, since extended into an agentic business platform. Its value is a structured brief and a shortlist — not a price.
+
+Built as plugins with a declared contract (`engine/plugins.mjs`): a plugin cannot report ready without the credentials its capabilities require, an undeclared capability is refused, and a dry run prints the exact request that would be sent rather than a fabricated catalogue. `engine/sourcing.mjs` turns a plain-language request into a brief, selects the price tier for the quantity and states a below-MOQ shortfall, lands the cost per unit, scores and ranks offers on quantity, budget, lead time, certificates and whether they ship here, runs the stock-versus-dropship arithmetic, and drafts an RFQ.
+
+Verified in the browser: "500 pcs solar panels under 120 usd to Kenya, HS 8541.43" parsed to product, quantity, budget, destination and HS hint; two offers ranked (shortlist 100, consider 51 with below-MOQ and budget reasons); the dropship-versus-stock arithmetic recommended holding stock at 23.02 against 40.80 per unit with KES 2.99M tied up over four months of cover; the Alibaba plugin's dry run reported `POST openapi.alibaba.com`, signed HMAC-SHA256, credentials present false. 101 tests pass.
+
+**Not modelled:** any de-minimis duty or VAT threshold for small parcels. No threshold is applied because none is verified for these lanes, and a wrong threshold silently misprices every parcel.
+
 ## Not yet verified
 
 - The Meta model calls (photo counting, transcription, lane matching, explanation) are written against
