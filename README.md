@@ -84,6 +84,17 @@ Verified in the browser: "500 pcs solar panels under 120 usd to Kenya, HS 8541.4
 
 Verified in the browser: invoice INV-2610-0001 raised for 600,000 plus 96,000 VAT with "proof of delivery not yet on file" printed on it; a 300,000 M-PESA payment left 396,000 part paid and moved the ageing bucket; 60 units received into bin NBO-01-01-01 under lot L-2026-11; 50 allocated to the order, producing pick line 1 at that bin, leaving 10 on hand, 50 allocated and zero available, with the statement "No available stock of SP450 at the Nairobi warehouse". 121 tests pass.
 
+## Messages, suppliers and stock control (added 29 October 2026)
+
+- **Nothing is sent without a person.** Every customer message is queued as pending, approved by a named approver, and only then eligible for a send run; quiet hours are checked at send time, not at queue time, so a message queued at eight in the evening does not slip out at eleven.
+- **A message cannot invent a fact.** Templates carry no defaults: if the order cannot supply the driver name or the tracking reference, the message refuses to render and names the field. That is visible in the screen, not buried in a log.
+- **Channels have hard limits.** SMS is 160 characters, WhatsApp 1,024, email 2,000, in-app 500; exceeding the limit is refused rather than silently truncated, because a truncated tracking reference is a wrong one. Recipients are masked once recorded.
+- **A supplier is unverified until someone names a document.** Verification without a reference is refused. A purchase order cannot be raised against an unverified supplier, a line without a price stops the order, and the order carries no VAT line — tax belongs on the supplier's invoice.
+- **Suppliers are scored on facts we hold:** verification, certification, lead time, whether we have an email, and whether the terms are better than prepayment. The score is shown with its reasons, not as a single magic number.
+- **Stock is counted, not assumed.** A count records variance as match, over or short; applying it moves stock and writes an audit entry; replaying the same count is refused. Write-offs need a reason from a fixed list and cannot exceed what remains. Shrinkage is reported by reason and value, with the largest single loss named.
+
+Verified in the browser on the live build: a delivery message queued, approved and sent with the recipient masked as +254\*\*\*\*1222; a supplier refused verification with no reference and accepted with a KRA PIN, scoring 75; a purchase order printed for 170,000 with no VAT line; 40 units received, a count of 36 recorded as short by 4, two damaged units written off, and the stock position and the shrinkage report agreeing at 27 units and 156,000 lost.
+
 ## Not yet verified
 
 - The Meta model calls (photo counting, transcription, lane matching, explanation) are written against
@@ -120,3 +131,31 @@ npm run build && npm run preview
 
 No licence file yet; the choice is pending the founder's sign-off. Nothing here may be reused until
 a licence is added.
+
+## Submission readiness checklist (added 29 October 2026)
+
+Each box is a fact checked against this working tree by `tests/submission.test.mjs`, not a claim
+carried over from the prose above.
+
+What is verified:
+
+- [x] Every file this README names exists on disk — the engine modules under `engine/` (more than
+      eight of them), the library modules under `src/lib/`, and the application component — counted
+      from the tree rather than taken from the prose above.
+- [x] `npm test` invokes `node --test`, and `npm run build` invokes `vite build`.
+- [x] `.gitignore` excludes `node_modules/` and `dist/`, so neither build output nor installed
+      dependencies reach the repository.
+- [x] The README claims no public repository, no licence and no deployed submission URL. No such URL
+      is printed anywhere in this document.
+- [x] There is no licence file in the tree, and **No licence is granted yet** — the Licence section
+      above governs until the founder signs one off.
+- [x] The Meta model layer is unverified rather than claimed: no live key was available on the build
+      machine, so photo counting, transcription, lane matching and explanation have never been
+      executed, and the interface reports "models off".
+
+What is still missing before this can be submitted:
+
+- [ ] A licence file, signed off by the founder.
+- [ ] A public repository URL — the code has not been published.
+- [ ] A deployed submission URL — nothing is hosted for the judges to open.
+- [ ] A Meta model key, so the four model calls can be run once and their real output recorded.

@@ -15,6 +15,10 @@ import { parseSpec, compareOffers, dropshipDecision, rfqDraft, landedPerUnit } f
 import { buildInvoice, recordPayment, ageing, creditExposure, nextInvoiceNumber } from "../engine/invoicing.mjs";
 import { receiveLot, stockPosition, allocate as allocateStock, pickList, availabilityStatement, binName } from "../engine/inventory.mjs";
 import { invoiceHtml, deliveryNoteHtml, packingListHtml } from "./lib/doc-templates.mjs";
+import { CHANNELS, EVENT_KEYS, requiredFields, render as renderMessage, enqueueNotification, approveNotification, sendNotification, isWithinQuietHours, quietHoursReason } from "../engine/notifications.mjs";
+import { addSupplier, verifySupplier, scoreSupplier, compareSuppliers, buildPurchaseOrder, PAYMENT_TERMS } from "../engine/suppliers.mjs";
+import { purchaseOrderHtml } from "./lib/supplier-docs.mjs";
+import { startCount, applyCount, writeOff, shrinkageReport, WRITE_OFF_REASONS } from "../engine/inventory-ops.mjs";
 import { list as listPlugins, status as pluginStatus, configure as configurePlugin, dryRun, supports as pluginSupports, get as getPlugin } from "../engine/plugins.mjs";
 
 const money = (n, ccy = "KES") =>
@@ -66,6 +70,7 @@ function Badges({ online, queue, backend, model }) {
 
 export default function App() {
   const [tab, setTab] = useState("new");
+  const [stockTick, setStockTick] = useState(0);
   const [shipments, setShipments] = useState([]);
   const [queue, setQueue] = useState(0);
   const [online, setOnline] = useState(navigator.onLine);
@@ -127,9 +132,11 @@ export default function App() {
           ["track", "Tracking & POD"],
           ["compliance", "Compliance"],
           ["source", "Sourcing"],
+          ["suppliers", "Suppliers"],
           ["orders", "Orders"],
           ["money", "Money"],
           ["warehouse", "Warehouse"],
+          ["messages", "Messages"],
           ["plugins", "Plugins"],
           ["accounts", "Accounts"],
           ["settings", "Setup"],
@@ -148,7 +155,9 @@ export default function App() {
         {tab === "source" && <SourcingView />}
         {tab === "orders" && <OrdersView user={user} accounts={accounts} />}
         {tab === "money" && <MoneyView user={user} accounts={accounts} />}
-        {tab === "warehouse" && <WarehouseView user={user} />}
+        {tab === "warehouse" && <><WarehouseView user={user} tick={stockTick} onChanged={() => setStockTick((t) => t + 1)} /><WarehouseOps user={user} tick={stockTick} onChanged={() => setStockTick((t) => t + 1)} /></>}
+        {tab === "suppliers" && <SuppliersView user={user} />}
+        {tab === "messages" && <MessagesView user={user} />}
         {tab === "plugins" && <PluginsView />}
         {tab === "accounts" && <AccountsView user={user} accounts={accounts} setAccounts={setAccounts} setUser={setUser} />}
         {tab === "settings" && <Settings backend={backend} model={model} onChanged={async () => { await refresh(); probe().then(setModel); }} queue={queue} onSync={syncNow} busy={busy} />}
@@ -1489,7 +1498,7 @@ function MoneyView({ user, accounts }) {
   );
 }
 
-function WarehouseView({ user }) {
+function WarehouseView({ user, onChanged, tick = 0 }) {
   const [lots, setLots] = useState([]);
   const [orders, setOrders] = useState([]);
   const [form, setForm] = useState({ sku: "", description: "", qty: "", lot: "", bin: "NBO-01-01-01", unitCost: "", expiresAt: "" });
@@ -1501,7 +1510,7 @@ function WarehouseView({ user }) {
     setLots((await all(STORES.lots)) ?? []);
     setOrders(((await all(STORES.orders)) ?? []).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)));
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [tick]);
 
   async function receive(e) {
     e.preventDefault();
@@ -1521,6 +1530,7 @@ function WarehouseView({ user }) {
       await load();
       setForm({ ...form, qty: "", lot: "" });
       setMsg(`Received ${lot.qty} of ${lot.sku} into ${lot.bin}.`);
+      onChanged?.();
     } catch (err) {
       setMsg(err.message);
     }
@@ -1549,6 +1559,7 @@ function WarehouseView({ user }) {
     await flush();
     await load();
     setMsg("Allocation committed to stock and to the order.");
+    onChanged?.();
   }
 
   const skus = [...new Set(lots.map((l) => l.sku))];
@@ -1639,6 +1650,399 @@ function WarehouseView({ user }) {
           </table>
         ) : null}
         {result?.skipped?.length ? <p className="hint" style={{ marginTop: 6 }}>Skipped: {result.skipped.map((s) => `${s.lot} (${s.why})`).join(", ")}</p> : null}
+      </section>
+    </>
+  );
+}
+
+
+/* ------------------------------------------------------------------ messages */
+const QUIET = { startHour: 21, endHour: 7, timezoneOffsetMinutes: 180 };
+const asQueue = (v) => (Array.isArray(v) ? v : (v?.queue ?? []));
+
+function MessagesView({ user }) {
+  const [orders, setOrders] = useState([]);
+  const [queue, setQueue] = useState([]);
+  const [eventKey, setEventKey] = useState("dispatched");
+  const [channel, setChannel] = useState("whatsapp");
+  const [to, setTo] = useState(user?.email ?? "");
+  const [orderId, setOrderId] = useState("");
+  const [vals, setVals] = useState({});
+  const [msg, setMsg] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      setOrders(((await all(STORES.orders)) ?? []).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)));
+      setQueue(asQueue(await kvGet("notifQueue")));
+    })();
+  }, []);
+
+  const fields = requiredFields(eventKey);
+  const order = orders.find((o) => o.id === orderId) ?? null;
+
+  useEffect(() => {
+    const guess = {
+      orderRef: order ? order.id.slice(-6) : "",
+      accountName: order ? (order.accountName ?? "") : "",
+      lineCount: order ? String(order.lines?.length ?? 1) : "",
+      amount: order ? money(order.valueKes, "") : "",
+      destination: order?.destination ?? "",
+      location: order?.destination ?? "",
+      driverName: order?.driverName ?? "",
+      vehicleId: order?.vehicleId ?? "",
+      trackingRef: order?.trackingRef ?? (order ? order.id.slice(-6) : ""),
+      promisedAt: order?.promisedAt ?? "",
+    };
+    const next = {};
+    for (const f of fields) next[f] = guess[f] ?? "";
+    setVals(next);
+  }, [eventKey, orderId, orders.length]);
+
+  let preview = null;
+  let err = null;
+  try {
+    preview = renderMessage(eventKey, vals, channel);
+  } catch (e) {
+    err = e.message;
+  }
+
+  const nowInQuiet = isWithinQuietHours(new Date(), QUIET);
+
+  async function persist(next, note) {
+    const rows = asQueue(next);
+    setQueue(rows);
+    await kvSet("notifQueue", rows);
+    setMsg(note);
+  }
+
+  async function queueIt() {
+    try {
+      const res = enqueueNotification(queue, { eventKey, payload: vals, channel, to, at: new Date().toISOString() });
+      await persist(res, "Queued. Nothing leaves until a named approver signs it.");
+    } catch (e) {
+      setMsg(e.message);
+    }
+  }
+
+  async function approve(id) {
+    try {
+      const res = approveNotification(queue, id, { by: user?.name ?? "Amanda", at: new Date().toISOString() });
+      await persist(res, "Approved. It is now eligible for a send run — not sent.");
+    } catch (e) {
+      setMsg(e.message);
+    }
+  }
+
+  async function send(id) {
+    try {
+      const res = sendNotification(queue, id, { at: new Date().toISOString(), quietHours: QUIET });
+      await persist(res, `Marked sent${res.receipt?.body ? "" : ""}. Recipient recorded as ${res.receipt?.to ?? "—"}.`);
+    } catch (e) {
+      setMsg(e.message);
+    }
+  }
+
+  return (
+    <>
+      <section className="card">
+        <h2>Compose a customer message</h2>
+        <p className="hint">Fields are taken from the order. Anything the template needs and the order cannot supply stays blank and the message will not render — a blank reference is worse than no message.</p>
+        <div className="grid">
+          <label className="field">Order
+            <select value={orderId} onChange={(e) => setOrderId(e.target.value)}>
+              <option value="">—</option>
+              {orders.map((o) => (<option key={o.id} value={o.id}>{o.id.slice(-6)} · {o.stage}</option>))}
+            </select>
+          </label>
+          <label className="field">Event
+            <select value={eventKey} onChange={(e) => setEventKey(e.target.value)}>
+              {EVENT_KEYS.map((k) => (<option key={k}>{k}</option>))}
+            </select>
+          </label>
+          <label className="field">Channel
+            <select value={channel} onChange={(e) => setChannel(e.target.value)}>
+              {Object.keys(CHANNELS).map((k) => (<option key={k}>{k}</option>))}
+            </select>
+          </label>
+          <label className="field">To<input value={to} onChange={(e) => setTo(e.target.value)} placeholder="client contact" /></label>
+        </div>
+        <div className="grid" style={{ marginTop: 8 }}>
+          {fields.map((f) => (
+            <label className="field" key={f}>{f}
+              <input value={vals[f] ?? ""} onChange={(e) => setVals({ ...vals, [f]: e.target.value })} />
+            </label>
+          ))}
+        </div>
+        <div className="notice" style={{ marginTop: 10 }}>
+          {err ? <span>Cannot render: {err}</span> : (
+            <>
+              {preview.subject ? <div><strong>{preview.subject}</strong></div> : null}
+              <div>{preview.body}</div>
+              <div className="hint" style={{ marginTop: 4 }}>{preview.length} of {CHANNELS[channel].maxLength} characters on {CHANNELS[channel].label}.</div>
+            </>
+          )}
+        </div>
+        <div className="row" style={{ marginTop: 10 }}>
+          <button className="primary" onClick={queueIt} disabled={!!err || !to}>Queue for approval</button>
+          <span className="hint">{nowInQuiet ? "Quiet hours now — sends will be refused until 07:00." : "Outside quiet hours."}</span>
+        </div>
+        {msg && <div className="notice" style={{ marginTop: 8 }}>{msg}</div>}
+      </section>
+
+      <section className="card">
+        <h2>Approval queue</h2>
+        {queue.length === 0 && <p className="hint">Nothing queued.</p>}
+        <table className="lines">
+          <thead><tr><th>Event</th><th>To</th><th>Channel</th><th>Status</th><th>Approved by</th><th></th></tr></thead>
+          <tbody>
+            {queue.slice().reverse().map((q) => (
+              <tr key={q.id}>
+                <td>{q.eventKey}</td>
+                <td>{q.to.replace(/^(\+?\d{3})\d+(\d{4})$/, "$1****$2")}</td>
+                <td>{q.channel}</td>
+                <td><span className={`pill ${q.status === "sent" ? "ok" : q.status === "approved" ? "warn" : ""}`}>{q.status}</span></td>
+                <td>{(q.approvals ?? []).map((a) => a.by).join(", ") || "—"}</td>
+                <td>
+                  {q.status === "pending" && <button className="ghost" onClick={() => approve(q.id)}>Approve</button>}
+                  {q.status === "approved" && <button className="ghost" onClick={() => send(q.id)}>Send</button>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+    </>
+  );
+}
+
+/* ----------------------------------------------------------------- suppliers */
+function SuppliersView({ user }) {
+  const [list, setList] = useState([]);
+  const [form, setForm] = useState({ name: "", country: "KE", email: "", products: "", leadTimeDays: "30", paymentTerms: "net30" });
+  const [verify, setVerify] = useState({ id: "", reference: "" });
+  const [po, setPo] = useState({ supplierId: "", description: "", qty: "1", unitPrice: "" });
+  const [product, setProduct] = useState("");
+  const [msg, setMsg] = useState("");
+
+  useEffect(() => { (async () => setList((await kvGet("suppliersAll")) ?? []))(); }, []);
+
+  const save = async (next, note) => { setList(next); await kvSet("suppliersAll", next); setMsg(note); };
+
+  async function add(e) {
+    e.preventDefault();
+    try {
+      const sup = addSupplier({
+        name: form.name, country: form.country, contact: { email: form.email },
+        products: form.products.split(",").map((x) => x.trim()).filter(Boolean),
+        certifications: [], leadTimeDays: Number(form.leadTimeDays), paymentTerms: form.paymentTerms,
+      });
+      await save([...list, sup], `${sup.name} added, unverified. A supplier starts unverified and stays that way until someone names a reference.`);
+      setForm({ ...form, name: "", email: "", products: "" });
+    } catch (err) { setMsg(err.message); }
+  }
+
+  async function doVerify() {
+    try {
+      const sup = list.find((x) => x.id === verify.id || x.name === verify.id);
+      if (!sup) return setMsg("Pick a supplier.");
+      const v = verifySupplier(sup, { by: user?.name ?? "Amanda", reference: verify.reference });
+      await save(list.map((x) => (x.id === v.id ? v : x)), `${v.name} verified against ${verify.reference}.`);
+      setVerify({ ...verify, reference: "" });
+    } catch (err) { setMsg(err.message); }
+  }
+
+  function raisePo() {
+    try {
+      const sup = list.find((x) => x.id === po.supplierId);
+      const order = { id: `ADHOC-${Date.now().toString().slice(-5)}` };
+      const doc = buildPurchaseOrder({ order, supplier: sup, lines: [{ description: po.description, qty: Number(po.qty), unitPrice: Number(po.unitPrice) }], number: `PO-${new Date().toISOString().slice(2, 7).replace("-", "")}-${String(list.length).padStart(3, "0")}` });
+      const w = window.open("", "_blank");
+      if (!w) return;
+      w.document.write(purchaseOrderHtml({ po: doc, supplier: sup, order, today: new Date().toDateString() }));
+      w.document.close();
+      w.focus();
+      setMsg(`${doc.number} issued to ${sup.name} for ${money(doc.total, "KES")}. A purchase order carries no VAT line — that is the supplier's document to raise.`);
+    } catch (err) { setMsg(err.message); }
+  }
+
+  const ranked = product ? compareSuppliers(list, { product }) : [];
+
+  return (
+    <>
+      <section className="card">
+        <h2>Add a supplier</h2>
+        <form onSubmit={add}>
+          <div className="grid">
+            <label className="field">Name<input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Kunpeng Industrial Ltd" /></label>
+            <label className="field">Country<input value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} maxLength={2} /></label>
+            <label className="field">Email<input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></label>
+            <label className="field">Products (comma separated)<input value={form.products} onChange={(e) => setForm({ ...form, products: e.target.value })} placeholder="display chiller, cold room" /></label>
+            <label className="field">Lead time (days)<input type="number" value={form.leadTimeDays} onChange={(e) => setForm({ ...form, leadTimeDays: e.target.value })} /></label>
+            <label className="field">Payment terms
+              <select value={form.paymentTerms} onChange={(e) => setForm({ ...form, paymentTerms: e.target.value })}>
+                {PAYMENT_TERMS.map((t) => (<option key={t}>{t}</option>))}
+              </select>
+            </label>
+          </div>
+          <div className="row" style={{ marginTop: 10 }}><button className="primary" type="submit">Add supplier</button></div>
+        </form>
+        {msg && <div className="notice" style={{ marginTop: 8 }}>{msg}</div>}
+      </section>
+
+      <section className="card">
+        <h2>Register</h2>
+        {list.length === 0 && <p className="hint">No suppliers yet.</p>}
+        <table className="lines">
+          <thead><tr><th>Name</th><th>Country</th><th>Terms</th><th className="num">Lead</th><th className="num">Score</th><th>Status</th></tr></thead>
+          <tbody>
+            {list.map((s) => (
+              <tr key={s.id}>
+                <td>{s.name}</td><td>{s.country}</td><td>{s.paymentTerms}</td>
+                <td className="num">{s.leadTimeDays}</td>
+                <td className="num">{scoreSupplier(s).score}</td>
+                <td><span className={`pill ${s.status === "verified" ? "ok" : "warn"}`}>{s.status}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+
+      <section className="card">
+        <h2>Verify a supplier</h2>
+        <p className="hint">Verification needs a reference — a registration, a certificate, a trade licence number. A verification with no reference is refused.</p>
+        <div className="grid">
+          <label className="field">Supplier
+            <select value={verify.id} onChange={(e) => setVerify({ ...verify, id: e.target.value })}>
+              <option value="">—</option>
+              {list.map((s) => (<option key={s.id} value={s.id}>{s.name}</option>))}
+            </select>
+          </label>
+          <label className="field">Reference<input value={verify.reference} onChange={(e) => setVerify({ ...verify, reference: e.target.value })} placeholder="KRA PIN / certificate no." /></label>
+        </div>
+        <div className="row" style={{ marginTop: 10 }}><button className="primary" onClick={doVerify} disabled={!verify.id}>Verify</button></div>
+      </section>
+
+      <section className="card">
+        <h2>Raise a purchase order</h2>
+        <div className="grid">
+          <label className="field">Supplier
+            <select value={po.supplierId} onChange={(e) => setPo({ ...po, supplierId: e.target.value })}>
+              <option value="">—</option>
+              {list.map((s) => (<option key={s.id} value={s.id}>{s.name} ({s.status})</option>))}
+            </select>
+          </label>
+          <label className="field">Description<input value={po.description} onChange={(e) => setPo({ ...po, description: e.target.value })} /></label>
+          <label className="field">Quantity<input type="number" value={po.qty} onChange={(e) => setPo({ ...po, qty: e.target.value })} /></label>
+          <label className="field">Unit price<input type="number" value={po.unitPrice} onChange={(e) => setPo({ ...po, unitPrice: e.target.value })} /></label>
+        </div>
+        <div className="row" style={{ marginTop: 10 }}><button className="primary" onClick={raisePo} disabled={!po.supplierId}>Issue purchase order</button></div>
+      </section>
+
+      <section className="card">
+        <h2>Who can supply this product</h2>
+        <div className="grid">
+          <label className="field">Product<input value={product} onChange={(e) => setProduct(e.target.value)} placeholder="display chiller" /></label>
+        </div>
+        {ranked.length > 0 && (
+          <table className="lines" style={{ marginTop: 10 }}>
+            <thead><tr><th>Supplier</th><th className="num">Score</th><th className="num">Lead</th><th>Status</th></tr></thead>
+            <tbody>{ranked.map((r) => (<tr key={r.id ?? r.name}><td>{r.name}</td><td className="num">{r.score}</td><td className="num">{r.leadTimeDays}</td><td>{r.status}</td></tr>))}</tbody>
+          </table>
+        )}
+        {product && ranked.length === 0 && <p className="hint">No registered supplier lists that product.</p>}
+      </section>
+    </>
+  );
+}
+
+/* ------------------------------------------------------- counting and shrinkage */
+function WarehouseOps({ user, tick = 0, onChanged }) {
+  const [lots, setLots] = useState([]);
+  const [count, setCount] = useState({ lotId: "", countedQty: "", countedBy: "" });
+  const [wo, setWo] = useState({ lotId: "", qty: "", reason: "damaged" });
+  const [msg, setMsg] = useState("");
+
+  const load = async () => setLots((await all(STORES.lots)) ?? []);
+  useEffect(() => { load(); }, [tick]);
+
+  const pick = (id) => lots.find((l) => l.id === id) ?? lots.find((l) => (l.lot ?? l.id) === id);
+
+  async function doCount() {
+    setMsg("");
+    try {
+      const lot = pick(count.lotId);
+      if (!lot) return setMsg("Pick a lot.");
+      const c = startCount({ sku: lot.sku, bin: lot.bin, lot: lot.lot ?? lot.id, expectedQty: lot.remaining, countedQty: Number(count.countedQty), countedBy: count.countedBy || user?.name || "counter", at: new Date().toISOString() });
+      const res = applyCount(lot, c);
+      await saveQueued(STORES.lots, "lot", res.lot);
+      await flush();
+      await load();
+      setMsg(c.status === "match" ? "Counted — matches the record, no adjustment." : `Counted ${c.status} by ${Math.abs(c.variance)}. Stock now ${res.lot.remaining}.`);
+      onChanged?.();
+      setCount({ ...count, countedQty: "" });
+    } catch (e) { setMsg(e.message); }
+  }
+
+  async function doWriteOff() {
+    setMsg("");
+    try {
+      const lot = pick(wo.lotId);
+      if (!lot) return setMsg("Pick a lot.");
+      const res = writeOff(lot, { qty: Number(wo.qty), reason: wo.reason, by: user?.name ?? "Amanda", at: new Date().toISOString() });
+      await saveQueued(STORES.lots, "lot", res.lot);
+      await flush();
+      await load();
+      setMsg(`${res.entry.qty} written off as ${res.entry.reason}. Remaining ${res.lot.remaining}.`);
+      onChanged?.();
+      setWo({ ...wo, qty: "" });
+    } catch (e) { setMsg(e.message); }
+  }
+
+  const report = shrinkageReport(lots, { from: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString(), to: new Date().toISOString() });
+
+  return (
+    <>
+      <section className="card">
+        <h2>Count a lot</h2>
+        <div className="grid">
+          <label className="field">Lot
+            <select value={count.lotId} onChange={(e) => setCount({ ...count, lotId: e.target.value })}>
+              <option value="">—</option>
+              {lots.map((l) => (<option key={l.id} value={l.id}>{l.sku} · {l.lot ?? l.id} · {l.bin} · {l.remaining} on record</option>))}
+            </select>
+          </label>
+          <label className="field">Counted quantity<input type="number" value={count.countedQty} onChange={(e) => setCount({ ...count, countedQty: e.target.value })} /></label>
+          <label className="field">Counted by<input value={count.countedBy} onChange={(e) => setCount({ ...count, countedBy: e.target.value })} /></label>
+        </div>
+        <div className="row" style={{ marginTop: 10 }}><button className="primary" onClick={doCount} disabled={!count.lotId}>Record count</button></div>
+      </section>
+
+      <section className="card">
+        <h2>Write off stock</h2>
+        <div className="grid">
+          <label className="field">Lot
+            <select value={wo.lotId} onChange={(e) => setWo({ ...wo, lotId: e.target.value })}>
+              <option value="">—</option>
+              {lots.map((l) => (<option key={l.id} value={l.id}>{l.sku} · {l.lot ?? l.id} · {l.remaining}</option>))}
+            </select>
+          </label>
+          <label className="field">Quantity<input type="number" value={wo.qty} onChange={(e) => setWo({ ...wo, qty: e.target.value })} /></label>
+          <label className="field">Reason
+            <select value={wo.reason} onChange={(e) => setWo({ ...wo, reason: e.target.value })}>
+              {WRITE_OFF_REASONS.map((r) => (<option key={r}>{r}</option>))}
+            </select>
+          </label>
+        </div>
+        <div className="row" style={{ marginTop: 10 }}><button className="primary" onClick={doWriteOff} disabled={!wo.lotId}>Write off</button></div>
+        {msg && <div className="notice" style={{ marginTop: 8 }}>{msg}</div>}
+      </section>
+
+      <section className="card">
+        <h2>Shrinkage this month · {money(report.valueLost, "KES")} lost</h2>
+        <div className="kpi">
+          {Object.entries(report.byReason).map(([reason, v]) => (<div key={reason}><span>{reason}</span><strong>{v.qty} · {money(v.value, "")}</strong></div>))}
+        </div>
+        {report.largest ? <p className="hint" style={{ marginTop: 8 }}>Largest loss: {report.largest.qty} of {report.largest.sku} ({report.largest.reason}) at {report.largest.bin}.</p> : <p className="hint" style={{ marginTop: 8 }}>No losses recorded this month.</p>}
       </section>
     </>
   );
