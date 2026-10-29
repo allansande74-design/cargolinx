@@ -5,3 +5,6 @@ dev-dist/
 .env.*
 *.log
 .DS_Store
+
+# preview deploy target
+.wrangler/
