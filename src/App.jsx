@@ -20,6 +20,7 @@ import { addSupplier, verifySupplier, scoreSupplier, compareSuppliers, buildPurc
 import { purchaseOrderHtml } from "./lib/supplier-docs.mjs";
 import { startCount, applyCount, writeOff, shrinkageReport, WRITE_OFF_REASONS } from "../engine/inventory-ops.mjs";
 import { list as listPlugins, status as pluginStatus, configure as configurePlugin, dryRun, supports as pluginSupports, get as getPlugin } from "../engine/plugins.mjs";
+import NetworkView from "./NetworkView.jsx";
 
 const money = (n, ccy = "KES") =>
   `${ccy} ${Number(n || 0).toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -137,6 +138,7 @@ export default function App() {
           ["money", "Money"],
           ["warehouse", "Warehouse"],
           ["messages", "Messages"],
+          ["network", "Network"],
           ["plugins", "Plugins"],
           ["accounts", "Accounts"],
           ["settings", "Setup"],
@@ -158,6 +160,7 @@ export default function App() {
         {tab === "warehouse" && <><WarehouseView user={user} tick={stockTick} onChanged={() => setStockTick((t) => t + 1)} /><WarehouseOps user={user} tick={stockTick} onChanged={() => setStockTick((t) => t + 1)} /></>}
         {tab === "suppliers" && <SuppliersView user={user} />}
         {tab === "messages" && <MessagesView user={user} />}
+        {tab === "network" && <NetworkView />}
         {tab === "plugins" && <PluginsView />}
         {tab === "accounts" && <AccountsView user={user} accounts={accounts} setAccounts={setAccounts} setUser={setUser} />}
         {tab === "settings" && <Settings backend={backend} model={model} onChanged={async () => { await refresh(); probe().then(setModel); }} queue={queue} onSync={syncNow} busy={busy} />}

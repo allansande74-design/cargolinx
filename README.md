@@ -159,3 +159,46 @@ What is still missing before this can be submitted:
 - [ ] A public repository URL — the code has not been published.
 - [ ] A deployed submission URL — nothing is hosted for the judges to open.
 - [ ] A Meta model key, so the four model calls can be run once and their real output recorded.
+
+## Network scale-up: 26 countries, bloc corridors, fleet tiers
+
+The platform stopped being an East African matchmaker on 29 October 2026. It now carries a
+twenty-six country registry spanning the East African Community, COMESA and SADC, a multi-leg
+international corridor planner that starts at a factory gate in Asia and ends at a partner warehouse
+inland, a vehicle matcher that reaches from a 34-tonne trailer combination down to a motorbike and a
+reserved cargo-drone tier, partner onboarding with document compliance, and a tracking engine that
+recovers from out-of-order carrier feeds instead of losing them.
+
+What is real and measured:
+
+- **26 countries** in `engine/network.mjs`: 7 EAC, 21 COMESA, 13 SADC. A country can be a member of
+  more than one bloc, and `membershipOf(code)` says which.
+- **1 of 26 quotable.** Kenya carries a verified dataset with its sources; the other 25 are `draft`
+  and the quote gate refuses them with a reason naming what must be confirmed. There is no duty
+  rate, VAT rate or fee invented for any of those 25 — a test fails if a currency figure or a
+  percentage appears in their citations.
+- **Corridor plans are multi-leg** and honest about what they are: sea, inland and last-mile legs
+  with hours, customs stops and an `indicative` confidence, and an explicit statement that no
+  carrier booking, slot, equipment or rate is confirmed by a plan.
+- **Delay replanning moves downstream legs.** Adding 24 or 72 hours to a leg shifts the arrival and
+  the following legs rather than quietly keeping the original promise.
+- **Vehicle matching is capacity-honest.** A 900 kg parcel on a Nairobi lane resolves to a pickup,
+  not a truck; 20 tonnes on the Northern Corridor resolves to a heavy truck at 71% of payload.
+- **Partners cannot be born trusted.** An owner registers as pending, each document is verified
+  against a reference and an expiry date, and approval needs a named approver and a reference.
+  Eligibility then refuses with specific blockers: an expired insurance, a vehicle smaller than the
+  load, a lane the owner is not registered for.
+- **A vehicle cannot be booked twice.** An overlapping window on the same plate is refused, naming
+  the order that already holds it.
+- **Tracking self-heals.** `departed` arriving before `gate_in` is held, not dropped, and released
+  automatically once the gap fills — the screen shows the release. Lateness escalates from on time
+  to at risk to late by elapsed hours against the expected arrival.
+
+What is still refused, deliberately:
+
+- 25 country datasets, until a human enters a sourced tariff dataset per country. A wrong duty
+  figure on one container costs more than every other mistake in this system combined.
+- Any cost that would be presented as a carrier rate. Freight figures are a planning model built on
+  stated assumptions, and the engine says so where it prints them.
+- Drone delivery: the vehicle tier exists and is marked `future`. The last 100 km by air is a
+  regulatory question before it is an engineering one.
