@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { kvGet, kvSet } from "./lib/db.js";
+import { kvGet, kvSet, all, STORES, saveOrder } from "./lib/db.js";
 
 import { AFRICA_26, BLOCS, membershipOf, coverage } from "../engine/network.mjs";
 import { gate, coverageWithDatasets, DATASETS } from "../engine/datasets.mjs";
@@ -7,6 +7,7 @@ import { PORTS, SEA_LANES, INLAND_LEGS, FACTORY_GATES, planInternational, replan
 import { VEHICLE_CLASSES, matchVehicle, splitShipment, costEstimate, capacityCheck, CORRIDORS as FLEET_CORRIDORS } from "../engine/fleet.mjs";
 import * as partners from "../engine/partners.mjs";
 import * as tracking from "../engine/tracking.mjs";
+import * as dispatch from "../engine/dispatch.mjs";
 
 const kes = (n) => (typeof n === "number" ? `KES ${n.toLocaleString("en-KE", { maximumFractionDigits: 0 })}` : "—");
 const hrs = (n) => (typeof n === "number" ? `${n.toLocaleString("en-KE", { maximumFractionDigits: 1 })} h` : "—");
@@ -79,7 +80,7 @@ export default function NetworkView() {
   const [clock, setClock] = useState(0);
   const [trackNote, setTrackNote] = useState("");
 
-  const baseTime = plan ? plan.legs[0].departAt : null;
+  const baseTime = track?.legs?.[0]?.departAt ?? (plan ? plan.legs[0].departAt : null);
 
   function openTracking() {
     if (!plan) return setTrackNote("Plan a corridor first — tracking needs the legs and their schedule.");
@@ -190,6 +191,76 @@ export default function NetworkView() {
       const next = partners.bookWindow(active, { plate: active.fleet[0].plate, from: `${book.from}T00:00:00Z`, to: `${book.to}T00:00:00Z`, orderId: book.orderId, now: new Date().toISOString() });
       await saveBook(fleetBook.map((p) => (p.id === next.id ? next : p)), `Window booked for ${book.orderId}.`);
     } catch (err) { setMsg(err.message); }
+  }
+
+  // ---- dispatch: order -> vehicle -> booked window -> track ----
+  const [dOrders, setDOrders] = useState([]);
+  const [dPick, setDPick] = useState("");
+  const [dForm, setDForm] = useState({
+    weightKg: "900",
+    lane: "nairobi_last_mile",
+    driverName: "",
+    distanceKm: "400",
+    at: new Date().toISOString().slice(0, 10),
+  });
+  const [dResult, setDResult] = useState(null);
+  const [dError, setDError] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      const stored = ((await all(STORES.orders)) ?? []).filter((o) => dispatch.readyFrom(o.type).includes(o.stage));
+      setDOrders(stored);
+      if (stored[0]) setDPick(stored[0].id);
+    })();
+  }, []);
+
+  function useDemoOrder() {
+    const demo = {
+      id: `ord_demo${Date.now().toString(36).slice(-4)}`,
+      accountId: "acc_seed01",
+      type: "import",
+      stage: "packed",
+      lines: [{ description: "SP450 solar floodlight", qty: 20, unitPriceKes: 4500 }],
+      destination: { city: "Nairobi", address: "Industrial Area, Nairobi" },
+      promisedAt: "2026-11-06T09:00:00.000Z",
+      pickedQty: 20,
+      packedQty: 20,
+    };
+    setDOrders([demo, ...dOrders.filter((o) => o.id !== demo.id)]);
+    setDPick(demo.id);
+    setDError("");
+    setDResult(null);
+  }
+
+  async function runDispatch() {
+    setDResult(null);
+    setDError("");
+    const order = dOrders.find((o) => o.id === dPick);
+    if (!order) return setDError("Choose an order that is packed or on arrival first.");
+    try {
+      const result = dispatch.dispatchOrder(order, {
+        partners: fleetBook,
+        weightKg: Number(dForm.weightKg),
+        lane: dForm.lane,
+        driverName: dForm.driverName,
+        distanceKm: dForm.distanceKm === "" ? null : Number(dForm.distanceKm),
+        at: `${dForm.at}T08:00:00Z`,
+      });
+      setDResult(result);
+      if (result.ok) {
+        await saveBook(
+          fleetBook.map((p) => (p.id === result.partner.id ? result.partner : p)),
+          `${result.order.id} dispatched on ${result.vehicle.plate} with ${result.partner.ownerName}.`,
+        );
+        await saveOrder(result.order);
+        setActiveId(result.partner.id);
+        setTrack(result.track);
+        setClock(0);
+        setTrackNote(`Tracking is open on ${result.order.trackingRef}, carried by ${result.vehicle.plate}. Report milestones as the carrier calls them; anything out of order is held and releases itself.`);
+      }
+    } catch (err) {
+      setDError(err.message);
+    }
   }
 
   return (
@@ -417,6 +488,93 @@ export default function NetworkView() {
           </>
         )}
         {msg && <div className="notice" style={{ marginTop: 8 }}>{msg}</div>}
+      </section>
+
+      <section className="card">
+        <h2>Dispatch</h2>
+        <p className="muted">
+          One thread from an order that is ready to move: the load is matched to a vehicle class, the smallest eligible
+          registered vehicle is booked for the window, the order is marked dispatched and the track opens on the same legs.
+          A partner is only offered if it is approved, its papers are valid on that date and its vehicle is registered for
+          that lane.
+        </p>
+        <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+          <label>
+            Order
+            <select value={dPick} onChange={(e) => { setDPick(e.target.value); setDResult(null); }}>
+              <option value="">— choose —</option>
+              {dOrders.map((o) => (
+                <option key={o.id} value={o.id}>{o.id} · {o.stage} · {o.type}</option>
+              ))}
+            </select>
+          </label>
+          <button type="button" onClick={useDemoOrder}>Add a demonstration order</button>
+        </div>
+        {dOrders.length === 0 && (
+          <p className="hint">No order is packed or on arrival in this browser. Place and pack an order on the Orders tab, or add a demonstration order to exercise the flow.</p>
+        )}
+        <div className="row" style={{ gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+          <label>
+            Weight (kg)
+            <input value={dForm.weightKg} onChange={(e) => setDForm({ ...dForm, weightKg: e.target.value })} inputMode="numeric" />
+          </label>
+          <label>
+            Lane
+            <select value={dForm.lane} onChange={(e) => setDForm({ ...dForm, lane: e.target.value })}>
+              {Object.keys(partners.CORRIDORS).map((k) => (
+                <option key={k} value={k}>{k}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Driver
+            <input value={dForm.driverName} onChange={(e) => setDForm({ ...dForm, driverName: e.target.value })} placeholder="Full name" />
+          </label>
+          <label>
+            Distance (km)
+            <input value={dForm.distanceKm} onChange={(e) => setDForm({ ...dForm, distanceKm: e.target.value })} inputMode="numeric" />
+          </label>
+          <label>
+            Dispatch date
+            <input type="date" value={dForm.at} onChange={(e) => setDForm({ ...dForm, at: e.target.value })} />
+          </label>
+          <button type="button" className="primary" onClick={runDispatch}>Dispatch</button>
+        </div>
+
+        {dError && <div className="warning" style={{ marginTop: 10 }}>{dError}</div>}
+
+        {dResult && !dResult.ok && (
+          <div className="warning" style={{ marginTop: 10 }}>
+            <strong>Refused.</strong> {dResult.refusals?.[0]?.message}
+            {dResult.refusals?.[0]?.candidates?.length > 0 && (
+              <ul>
+                {dResult.refusals[0].candidates.map((c) => <li key={c}>{c}</li>)}
+              </ul>
+            )}
+          </div>
+        )}
+
+        {dResult && dResult.ok && (
+          <div className="notice" style={{ marginTop: 10 }}>
+            <p><strong>{dispatch.dispatchSummary(dResult)}</strong></p>
+            <ul>
+              <li>Order {dResult.order.id} is now at {dResult.order.stage}; job {dResult.job.id} carries reference {dResult.job.trackingRef}.</li>
+              <li>Vehicle {dResult.vehicle.plate} — {dResult.vehicle.classCode}, {dResult.vehicle.capacityKg?.toLocaleString?.("en-KE") ?? dResult.vehicle.capacityKg} kg registration, owner {dResult.partner.ownerName}.</li>
+              {dResult.booking && <li>Booked {day(dResult.booking.from)} → {day(dResult.booking.to)} for {dResult.booking.orderId}.</li>}
+              {dResult.track?.legs?.length > 0 && (
+                <li>
+                  Track {dResult.track.shipmentId}: {dResult.track.legs.length} leg{dResult.track.legs.length > 1 ? "s" : ""}, first leg{" "}
+                  {hrs((Date.parse(dResult.track.legs[0].arriveAt) - Date.parse(dResult.track.legs[0].departAt)) / 3600000)} ({day(dResult.track.legs[0].departAt)} → {day(dResult.track.legs[0].arriveAt)}).
+                </li>
+              )}
+              <li>{dResult.estimate ? `Planning estimate ${kes(dResult.estimate.freightKes)} — ${dResult.estimate.basis?.join(", ")}. ${dResult.estimateNote}` : dResult.estimateNote}</li>
+              {dResult.refusedAlternatives?.length > 0 && (
+                <li>{dResult.refusedAlternatives.length} other vehicle{dResult.refusedAlternatives.length > 1 ? "s" : ""} refused: {dResult.refusedAlternatives.map((r) => `${r.plate} (${r.blockers[0] ?? "not eligible"})`).join("; ")}.</li>
+              )}
+            </ul>
+            <p className="muted">The tracking panel above accepts this reference — report departure, gate-in and load events against it.</p>
+          </div>
+        )}
       </section>
     </>
   );

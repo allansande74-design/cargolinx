@@ -202,3 +202,34 @@ What is still refused, deliberately:
   stated assumptions, and the engine says so where it prints them.
 - Drone delivery: the vehicle tier exists and is marked `future`. The last 100 km by air is a
   regulatory question before it is an engineering one.
+
+## Dispatch: one thread from order to moving vehicle (added 29 October 2026)
+
+`engine/dispatch.mjs` joins the pieces an operator used to carry by hand: order stage, vehicle class,
+partner papers, booking window and tracking.
+
+```js
+import { dispatchOrder, dispatchSummary } from "./engine/dispatch.mjs";
+
+const result = dispatchOrder(order, {
+  partners,            // records from the partner register
+  weightKg: 12000,
+  lane: "northern",     // partner lane key, not a fleet road class
+  driverName: "Peter Mwangi",
+  distanceKm: 480,      // optional; without it no estimate is attached
+  at: "2026-11-06T08:00:00Z",
+});
+
+if (!result.ok) return result.refusals;   // code + sentence, plus per-candidate blockers
+```
+
+It refuses to skip a stage, chooses the smallest eligible vehicle rather than the first one, books the
+plate before dispatching so two orders cannot take the same truck, and opens the track on the same legs
+the promise was made against. Every refusal is data, never an exception.
+
+Two vocabulary fixes came with it: the partner register now carries `trailer`, `medium_truck` and
+`drone_last100` alongside its original classes, and `rigid_truck → medium_truck` is bridged for
+matching, because a registered 12 t truck had been silently ineligible for a 9 t load.
+
+In the app: the Network tab's **Dispatch** panel. Tests: `tests/dispatch.test.mjs` (11 cases). Full SOP:
+`docs/DISPATCH.md`.

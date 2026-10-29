@@ -115,12 +115,20 @@ export function roadClass(corridor) {
  * capable vehicle.
  */
 export const VEHICLE_CLASSES = {
+  trailer: { label: "Articulated trailer combination", maxPayloadKg: 34000, serves: ["long_haul"] },
   heavy_truck: { label: "Heavy truck / articulated combination", maxPayloadKg: 28000, serves: ["long_haul"] },
+  medium_truck: { label: "Medium truck (7-14 t)", maxPayloadKg: 14000, serves: ["long_haul", "urban"] },
   rigid_truck: { label: "Rigid truck (two or three axles)", maxPayloadKg: 12000, serves: ["long_haul"] },
   light_truck: { label: "Light truck up to 3.5 t", maxPayloadKg: 3500, serves: ["long_haul", "urban"] },
   pickup: { label: "Pickup / utility vehicle", maxPayloadKg: 1000, serves: ["urban"] },
   van: { label: "Panel van", maxPayloadKg: 1200, serves: ["urban"] },
   motorbike: { label: "Motorbike courier", maxPayloadKg: 60, serves: ["urban"] },
+  drone_last100: {
+    label: "Drone operator (last 100 km)",
+    maxPayloadKg: 20,
+    serves: ["air"],
+    note: "kept in the register so the operator and its papers exist before the lane does; no corridor here is open to drone freight yet",
+  },
   drone: {
     label: "Drone operator",
     maxPayloadKg: 20,
