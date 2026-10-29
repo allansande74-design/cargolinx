@@ -1,0 +1,24 @@
+{
+  "jurisdiction": "KE",
+  "currency": "KES",
+  "effectiveFrom": "2026-07-01",
+  "verifiedOn": "2026-10-28",
+  "sources": [
+    "PwC Worldwide Tax Summaries — Kenya, Corporate Other taxes (last reviewed 17 July 2026): IDF 2.5% of customs value; RDL 2% of customs value; VAT 16% standard, 8% on fuel.",
+    "EAC Common External Tariff 2022 — four bands 0%, 10%, 25%, 35%."
+  ],
+  "levies": {
+    "idf": 0.025,
+    "rdl": 0.02
+  },
+  "vat": {
+    "standard": 0.16,
+    "fuel": 0.08
+  },
+  "dutyBands": [0, 0.1, 0.25, 0.35],
+  "vatBase": ["cif", "duty", "excise", "idf", "rdl"],
+  "assumptions": [
+    "Duty is charged on the CIF value; excise, where it applies, on CIF plus duty.",
+    "VAT is charged on CIF + duty + excise + IDF + RDL. This composition is a modelling choice, is configurable per quote, and must be confirmed against a live KRA assessment before any figure is issued to a client."
+  ]
+}
