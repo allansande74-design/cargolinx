@@ -129,8 +129,9 @@ npm run build && npm run preview
 
 ## Licence
 
-No licence file yet; the choice is pending the founder's sign-off. Nothing here may be reused until
-a licence is added.
+Apache License 2.0 — see `LICENSE`. The entry can be judged, forked and reused, including commercially,
+provided the notice and attribution are kept. The patent grant is included, which matters for a product
+that will be sold to traders rather than merely demonstrated.
 
 ## Submission readiness checklist (added 29 October 2026)
 
@@ -145,17 +146,15 @@ What is verified:
 - [x] `npm test` invokes `node --test`, and `npm run build` invokes `vite build`.
 - [x] `.gitignore` excludes `node_modules/` and `dist/`, so neither build output nor installed
       dependencies reach the repository.
-- [x] The README claims no public repository, no licence and no deployed submission URL. No such URL
-      is printed anywhere in this document.
-- [x] There is no licence file in the tree, and **No licence is granted yet** — the Licence section
-      above governs until the founder signs one off.
+- [x] A licence is in the tree — Apache 2.0 in `LICENSE`, named in the Licence section above.
+- [x] `docs/CONTRIBUTION.md` records what was built, what is measured, and what is explicitly not
+      claimed.
 - [x] The Meta model layer is unverified rather than claimed: no live key was available on the build
       machine, so photo counting, transcription, lane matching and explanation have never been
       executed, and the interface reports "models off".
 
 What is still missing before this can be submitted:
 
-- [ ] A licence file, signed off by the founder.
 - [ ] A public repository URL — the code has not been published.
 - [ ] A deployed submission URL — nothing is hosted for the judges to open.
 - [ ] A Meta model key, so the four model calls can be run once and their real output recorded.

@@ -75,8 +75,10 @@ test("the files the feature sections name by hand are the ones the reader return
 
 // ------------------------------------------------------- (2) no submission claims
 
-test("the README claims no public repository, no licence and no deployed submission URL", () => {
-  const forbidden = ["github.com/", "apache license 2.0", "vercel.app"];
+test("the README claims no public repository and no deployed submission URL", () => {
+  // The licence is now a fact of the repository, so it is no longer a forbidden claim; a repository
+  // address and a hosting address remain claims, and stay forbidden until they actually exist.
+  const forbidden = ["github.com/", "vercel.app", "workers.dev"];
   const lines = README.split("\n");
   const hits = [];
   for (const [i, line] of lines.entries()) {
@@ -124,13 +126,16 @@ test("the gitignore check is anchored, so dev-dist is not read as dist", () => {
 
 // ------------------------------------------------------------------- (5) licence
 
-test("no LICENSE file is present", () => {
+test("a licence file is present and grants rights explicitly", () => {
   const present = ["LICENSE", "LICENSE.md", "LICENSE.txt", "COPYING"].filter((f) => existsSync(at(f)));
-  assert.deepEqual(present, [], `a licence file exists: ${present.join(", ")}`);
+  assert.ok(present.length >= 1, "no licence file: the repository grants nothing, which fails the rules");
+  const body = readFileSync(at(present[0]), "utf8");
+  assert.ok(/apache license|mit license/i.test(body), `${present[0]} is not a recognised open licence`);
 });
 
-test("the README says plainly that no licence is granted yet", () => {
-  assert.ok(README.includes("No licence is granted yet"), "README does not state 'No licence is granted yet'");
+test("the README names the licence instead of leaving it open", () => {
+  assert.ok(/licen[cs]e/i.test(README), "README does not mention the licence at all");
+  assert.ok(!README.includes("No licence is granted yet"), "README still says no licence is granted yet");
 });
 
 // -------------------------------------------------------------------- (6) engine
@@ -149,8 +154,8 @@ test("the readiness checklist exists, and still names what is missing", () => {
   const done = section.match(/^- \[x\]/gim) ?? [];
   const open = section.match(/^- \[ \]/gim) ?? [];
   assert.ok(done.length >= 3, `the checklist has ${done.length} verified item(s)`);
-  assert.ok(open.length >= 4, `the checklist has ${open.length} open item(s)`);
-  for (const gap of ["licence", "repository", "deployed", "Meta model key"]) {
+  assert.ok(open.length >= 3, `the checklist has ${open.length} open item(s)`);
+  for (const gap of ["repository", "deployed", "Meta model key"]) {
     assert.match(section, new RegExp(gap, "i"), `the checklist does not name the missing ${gap}`);
   }
 });
