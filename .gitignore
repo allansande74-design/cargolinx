@@ -8,3 +8,6 @@ dev-dist/
 
 # preview deploy target
 .wrangler/
+
+# deploy state and claim tokens — never commit
+.herenow/

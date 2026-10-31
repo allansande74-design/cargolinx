@@ -1,6 +1,7 @@
 {
   "name": "cargolinx-v2",
   "version": "0.2.0",
+  "engines": { "node": "20.x" },
   "private": true,
   "type": "module",
   "description": "CargoLinx v2 — offline-first freight quoting and tracking for East African corridors.",

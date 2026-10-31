@@ -75,10 +75,11 @@ test("the files the feature sections name by hand are the ones the reader return
 
 // ------------------------------------------------------- (2) no submission claims
 
-test("the README claims no public repository and no deployed submission URL", () => {
-  // The licence is now a fact of the repository, so it is no longer a forbidden claim; a repository
-  // address and a hosting address remain claims, and stay forbidden until they actually exist.
-  const forbidden = ["github.com/", "vercel.app", "workers.dev"];
+test("the README may name the verified public repository URL only", () => {
+  // The public repo is verified (HTTP 200) so the README may name exactly that one address.
+  // Any other repo/hosting address stays forbidden until it actually exists and is verified.
+  const allowed = "https://github.com/allansande74-design/cargolinx";
+  const forbidden = ["vercel.app", "workers.dev", "netlify.app", "here.now/c/"];
   const lines = README.split("\n");
   const hits = [];
   for (const [i, line] of lines.entries()) {
@@ -86,13 +87,18 @@ test("the README claims no public repository and no deployed submission URL", ()
     for (const token of forbidden) {
       if (lower.includes(token)) hits.push(`line ${i + 1}: "${token}" in ${line.trim()}`);
     }
+    if (lower.includes("github.com/") && !line.includes(allowed))
+      hits.push(`line ${i + 1}: unverified github URL in ${line.trim()}`);
   }
   assert.deepEqual(hits, [], `README makes a claim that is not true of this repository:\n${hits.join("\n")}`);
 });
 
-test("the README links no absolute URL except localhost", () => {
+test("the README links no absolute URL except localhost and the verified repo", () => {
+  const allowedRepo = "https://github.com/allansande74-design/cargolinx";
   const urls = README.match(/https?:\/\/[^\s`)]+/g) ?? [];
-  const external = urls.filter((u) => !/^https?:\/\/(localhost|127\.0\.0\.1)[:/]/.test(u));
+  const external = urls.filter(
+    (u) => !/^https?:\/\/(localhost|127\.0\.0\.1)[:/]/.test(u) && !u.startsWith(allowedRepo),
+  );
   assert.deepEqual(external, [], `README points at external URLs: ${external.join(", ")}`);
 });
 
@@ -147,15 +153,15 @@ test("engine holds at least eight ESM modules", () => {
   assert.ok(modules.length >= 8, `engine holds ${modules.length} .mjs modules, fewer than 8`);
 });
 
-test("the readiness checklist exists, and still names what is missing", () => {
+test("the readiness checklist exists, and names what is done and still open", () => {
   const heading = "## Submission readiness checklist (added 29 October 2026)";
   assert.ok(README.includes(heading), "the readiness checklist heading is missing");
   const section = README.slice(README.indexOf(heading));
   const done = section.match(/^- \[x\]/gim) ?? [];
   const open = section.match(/^- \[ \]/gim) ?? [];
   assert.ok(done.length >= 3, `the checklist has ${done.length} verified item(s)`);
-  assert.ok(open.length >= 3, `the checklist has ${open.length} open item(s)`);
+  assert.ok(open.length >= 1, `the checklist has ${open.length} open item(s)`);
   for (const gap of ["repository", "deployed", "Meta model key"]) {
-    assert.match(section, new RegExp(gap, "i"), `the checklist does not name the missing ${gap}`);
+    assert.match(section, new RegExp(gap, "i"), `the checklist does not name the ${gap} item`);
   }
 });

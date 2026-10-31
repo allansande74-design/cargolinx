@@ -3,7 +3,7 @@ import { landedCost, quote, floorPrice, KE_RATES } from "../engine/landed.mjs";
 import { planEta, applyEvent } from "../engine/eta.mjs";
 import { STORES, all, put, saveShipment, saveOrder, saveQueued, savePhoto, getPhoto, newId, kvGet, kvSet } from "./lib/db.js";
 import { flush, queueDepth, getConfig, setConfig } from "./lib/sync.js";
-import { probe, readCargoPhoto, transcribeVoice, explainQuote, getModelConfig, setModelConfig } from "./lib/meta.js";
+import { probe, readCargoPhoto, transcribeVoice, explainQuote, getModelConfig, setModelConfig, readDocument, isReadableDocument } from "./lib/meta.js";
 import { quoteHtml } from "./lib/quote-doc.mjs";
 import { dutyTreatment, pvocFee, pvocApplicable, resolveHS, waiverAdjustment, EAC_MEMBERS, WAIVER_TYPES, FX } from "../engine/tariff.mjs";
 import { buildDossier, dossierStatus, setDocStatus } from "../engine/docs.mjs";
@@ -21,6 +21,8 @@ import { purchaseOrderHtml } from "./lib/supplier-docs.mjs";
 import { startCount, applyCount, writeOff, shrinkageReport, WRITE_OFF_REASONS } from "../engine/inventory-ops.mjs";
 import { list as listPlugins, status as pluginStatus, configure as configurePlugin, dryRun, supports as pluginSupports, get as getPlugin } from "../engine/plugins.mjs";
 import NetworkView from "./NetworkView.jsx";
+import Landing from "./Landing.jsx";
+import Auth from "./Auth.jsx";
 
 const money = (n, ccy = "KES") =>
   `${ccy} ${Number(n || 0).toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -69,8 +71,19 @@ function Badges({ online, queue, backend, model }) {
   );
 }
 
-export default function App() {
-  const [tab, setTab] = useState("new");
+function Empty({ icon, title, body, cta = "Create a shipment", href = "#/desk/new" }) {
+  return (
+    <section className="card empty">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{ICONS[icon] || ICONS.box}</svg>
+      <h2>{title}</h2>
+      <p>{body}</p>
+      <a className="primary" href={href}>{cta}</a>
+    </section>
+  );
+}
+
+function Desk({ onSignOut }) {
+  const [tab, setTab] = useState(() => tabFromHash());
   const [stockTick, setStockTick] = useState(0);
   const [shipments, setShipments] = useState([]);
   const [queue, setQueue] = useState(0);
@@ -106,6 +119,20 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    const h = "#/desk/" + tab;
+    if (window.location.hash !== h) window.location.hash = h;
+  }, [tab]);
+
+  useEffect(() => {
+    const onHash = () => {
+      const next = tabFromHash();
+      setTab((prev) => (prev === next ? prev : next));
+    };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+
   async function syncNow() {
     setBusy("Syncing");
     const res = await flush();
@@ -117,39 +144,68 @@ export default function App() {
   const selected = shipments.find((s) => s.id === selectedId) ?? shipments[0] ?? null;
 
   return (
-    <div className="app">
-      <header className="top">
-        <div>
-          <h1>CargoLinx</h1>
-          <div className="sub">Offline freight desk · East African corridors</div>
+    <div className="desk">
+      <aside className="side">
+        <a className="brand" href="#/desk/new" onClick={(e) => { e.preventDefault(); setTab("new"); }} aria-label="Altovex CargoLinx home">
+          <span className="mark">AX</span>
+          <span className="brand-txt"><strong>Altovex CargoLinx</strong><small>Freight desk</small></span>
+        </a>
+
+        <nav className="sidenav" aria-label="Desk modules">
+          {NAV.map((group) => (
+            <div className="navgroup" key={group.title}>
+              <div className="navlabel">{group.title}</div>
+              {group.items.map(([k, label, icon]) => (
+                <button
+                  key={k}
+                  className={"navitem" + (tab === k ? " active" : "")}
+                  onClick={() => setTab(k)}
+                  aria-current={tab === k ? "page" : undefined}
+                >
+                  <svg className="ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{ICONS[icon]}</svg>
+                  <span className="lbl">{label}</span>
+                  {k === "network" && queue > 0 ? <span className="count">{queue}</span> : null}
+                </button>
+              ))}
+            </div>
+          ))}
+        </nav>
+
+        <div className="sidefoot">
+          <div className="userchip">
+            <span className="avatar">{((user && (user.name || user.label)) || "Demo").slice(0, 1).toUpperCase()}</span>
+            <span className="who">
+              <strong>{(user && (user.name || user.label)) || "Demo operator"}</strong>
+              <small>{(user && (user.label || user.role)) || "Local demo session"}</small>
+            </span>
+          </div>
+          <button className="ghost small" onClick={onSignOut}>Sign out</button>
         </div>
-        <Badges online={online} queue={queue} backend={backend.mode === "supabase" ? "Supabase" : "Local demo server"} model={model} />
-      </header>
+      </aside>
 
-      <nav className="tabs" role="tablist">
-        {[
-          ["new", "New shipment"],
-          ["quote", "Quote"],
-          ["track", "Tracking & POD"],
-          ["compliance", "Compliance"],
-          ["source", "Sourcing"],
-          ["suppliers", "Suppliers"],
-          ["orders", "Orders"],
-          ["money", "Money"],
-          ["warehouse", "Warehouse"],
-          ["messages", "Messages"],
-          ["network", "Network"],
-          ["plugins", "Plugins"],
-          ["accounts", "Accounts"],
-          ["settings", "Setup"],
-        ].map(([k, label]) => (
-          <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}>
-            {label}
-          </button>
-        ))}
-      </nav>
+      <div className="desk-main">
+        <header className="bar">
+          <div className="crumbs">
+            <b>Altovex</b><span className="sep">/</span><span>CargoLinx</span><span className="sep">/</span>
+            <span>{PAGE[tab].title}</span>
+          </div>
+          <div className="spacer" />
+          <div className="badge-row">
+            <Badges online={online} queue={queue} backend={backend.mode === "supabase" ? "Supabase" : "Local demo server"} model={model} />
+          </div>
+        </header>
 
-      <main>
+        <main className="page">
+          <div className="page-head">
+            <div className="pt">
+              <h1>{PAGE[tab].title}</h1>
+              <p>{PAGE[tab].sub}</p>
+            </div>
+            <div className="page-actions">
+              {tab !== "new" && <button className="ghost" onClick={() => setTab("new")}>New shipment</button>}
+              <button className="primary" onClick={syncNow} disabled={!!busy}>{busy || "Sync now"}</button>
+            </div>
+          </div>
         {tab === "new" && <NewShipment onCreated={async (s) => { await refresh(); setSelectedId(s.id); setTab("quote"); }} model={model} />}
         {tab === "quote" && <QuoteView shipment={selected} shipments={shipments} onPick={setSelectedId} onChange={refresh} model={model} />}
         {tab === "track" && <TrackView shipment={selected} shipments={shipments} onPick={setSelectedId} onChange={refresh} />}
@@ -164,14 +220,122 @@ export default function App() {
         {tab === "plugins" && <PluginsView />}
         {tab === "accounts" && <AccountsView user={user} accounts={accounts} setAccounts={setAccounts} setUser={setUser} />}
         {tab === "settings" && <Settings backend={backend} model={model} onChanged={async () => { await refresh(); probe().then(setModel); }} queue={queue} onSync={syncNow} busy={busy} />}
-      </main>
+        </main>
 
-      <footer>
-        Figures are computed by the local engine from dated statutory rates; model output explains, never prices.
-        {model.live ? "" : " Model-assisted steps are disabled until a Meta key is configured."}
-      </footer>
+        <footer>
+          Figures are computed by the local engine from dated statutory rates; model output explains, never prices.
+          {model.live ? "" : " Model-assisted steps are disabled until a Meta key is configured."}
+        </footer>
+      </div>
     </div>
   );
+}
+
+/* ---------------------------------------------------------------- shell ---- */
+
+const NAV = [
+  { title: "Operate", items: [
+    ["new", "New shipment", "plus"],
+    ["quote", "Quotes & pricing", "file"],
+    ["track", "Tracking & POD", "pin"],
+    ["compliance", "Compliance", "shield"],
+  ] },
+  { title: "Trade", items: [
+    ["source", "Sourcing", "globe"],
+    ["suppliers", "Suppliers", "box"],
+    ["orders", "Orders", "list"],
+    ["money", "Money", "coins"],
+  ] },
+  { title: "Workspace", items: [
+    ["warehouse", "Warehouse", "warehouse"],
+    ["messages", "Messages", "chat"],
+    ["network", "Network", "share"],
+    ["plugins", "Plugins", "puzzle"],
+    ["accounts", "Accounts", "users"],
+    ["settings", "Setup", "gear"],
+  ] },
+];
+
+const PAGE = {
+  new: { title: "New shipment", sub: "Capture the cargo once; the quote, documents and tracking all read from it." },
+  quote: { title: "Quotes & pricing", sub: "Landed-cost ladder and customer quote, computed locally from dated statutory rates." },
+  track: { title: "Tracking & proof of delivery", sub: "Status events, photos and signatures held against the shipment." },
+  compliance: { title: "Compliance", sub: "HS classification, EAC origin, PVoC and waivers checked before the border." },
+  source: { title: "Sourcing", sub: "Supplier offers compared on landed cost per unit, not on sticker price." },
+  suppliers: { title: "Suppliers", sub: "Records, verification and scoring for the parties you buy from." },
+  orders: { title: "Orders", sub: "From quotation to delivery, with the stage and its blockers made explicit." },
+  money: { title: "Money", sub: "Invoices, payments, ageing and credit exposure in one ledger." },
+  warehouse: { title: "Warehouse", sub: "Lots, bin locations, stock counts and write-offs." },
+  messages: { title: "Messages", sub: "Notification drafts per event, in your words, sent on approval." },
+  network: { title: "Network", sub: "Partners, lanes and what has been handed over to whom." },
+  plugins: { title: "Plugins", sub: "Optional integrations, each probed before it is trusted." },
+  accounts: { title: "Accounts", sub: "People, roles and what each one is allowed to do." },
+  settings: { title: "Setup", sub: "Backend, storage and model configuration for this device." },
+};
+
+const ICONS = {
+  plus: <><path d="M12 5v14M5 12h14" /></>,
+  file: <><path d="M14 3v5h5" /><path d="M19 8.5V21H5V3h9l5 5.5Z" /><path d="M8.5 13h7M8.5 16.5h4.5" /></>,
+  pin: <><path d="M12 21s7-6.1 7-11a7 7 0 1 0-14 0c0 4.9 7 11 7 11Z" /><circle cx="12" cy="10" r="2.6" /></>,
+  shield: <><path d="M12 3l7 3v6c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6l7-3Z" /><path d="M9 12l2 2 4-4" /></>,
+  globe: <><circle cx="12" cy="12" r="9" /><path d="M3.5 9h17M3.5 15h17" /><path d="M12 3c2.6 2.6 4 5.7 4 9s-1.4 6.4-4 9c-2.6-2.6-4-5.7-4-9s1.4-6.4 4-9Z" /></>,
+  box: <><path d="M3 8l9-5 9 5v8l-9 5-9-5V8Z" /><path d="M3 8l9 5 9-5M12 13v8" /></>,
+  list: <><path d="M8 6h13M8 12h13M8 18h13" /><path d="M3.5 6h.01M3.5 12h.01M3.5 18h.01" /></>,
+  coins: <><ellipse cx="12" cy="6.5" rx="7" ry="3" /><path d="M5 6.5v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5" /><path d="M5 11.5v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5" /></>,
+  warehouse: <><path d="M3 21V9l9-6 9 6v12" /><path d="M7 21v-7h10v7" /><path d="M7 17h10" /></>,
+  chat: <><path d="M21 12a8 8 0 0 1-8 8H7l-4 3V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8Z" /><path d="M8.5 11h7M8.5 14.5h4" /></>,
+  share: <><circle cx="18" cy="5" r="2.6" /><circle cx="6" cy="12" r="2.6" /><circle cx="18" cy="19" r="2.6" /><path d="M8.4 10.8l7.2-4.2M8.4 13.2l7.2 4.2" /></>,
+  puzzle: <><path d="M9 4.5a2 2 0 0 1 4 0V6h2.5a1.5 1.5 0 0 1 1.5 1.5V10h1.5a2 2 0 0 1 0 4H17v2.5a1.5 1.5 0 0 1-1.5 1.5H13v1.5a2 2 0 0 1-4 0V18H6.5A1.5 1.5 0 0 1 5 16.5V14H3.5a2 2 0 0 1 0-4H5V7.5A1.5 1.5 0 0 1 6.5 6H9V4.5Z" /></>,
+  users: <><circle cx="9" cy="8" r="3.2" /><path d="M3.5 20a5.5 5.5 0 0 1 11 0" /><path d="M16 5.2a3.2 3.2 0 0 1 0 6.1M17.5 20a5.6 5.6 0 0 0-2-4.3" /></>,
+  gear: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" /></>,
+};
+
+const TAB_KEYS = NAV.flatMap((g) => g.items.map(([k]) => k));
+
+function tabFromHash() {
+  const m = /^#\/desk\/([a-z]+)/.exec(window.location.hash || "");
+  return m && TAB_KEYS.includes(m[1]) ? m[1] : "new";
+}
+
+function routeFromHash() {
+  const h = window.location.hash || "";
+  if (h.startsWith("#/signin")) return "signin";
+  if (h.startsWith("#/desk")) return "desk";
+  return "landing";
+}
+
+export default function App() {
+  const [route, setRoute] = useState(routeFromHash);
+  const [entered, setEntered] = useState(!!(routeFromHash() === "desk"));
+
+  useEffect(() => {
+    const onHash = () => setRoute(routeFromHash());
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+
+  useEffect(() => {
+    document.title = route === "desk" ? "Altovex CargoLinx · Desk" : route === "signin" ? "Sign in · Altovex CargoLinx" : "Altovex CargoLinx · Offline freight desk";
+    document.body.classList.toggle("site", route !== "desk");
+  }, [route]);
+
+  function go(hash) {
+    if (window.location.hash === hash) setRoute(routeFromHash());
+    else window.location.hash = hash;
+  }
+
+  async function signOut() {
+    await kvSet("session", null);
+    go("#/signin");
+  }
+
+  if (route === "desk") {
+    return <Desk onSignOut={signOut} />;
+  }
+  if (route === "signin") {
+    return <Auth onEnter={() => go("#/desk/new")} onHome={() => go("#/")} />;
+  }
+  return <Landing onEnter={() => go("#/desk/new")} onSignIn={() => go("#/signin")} />;
 }
 
 function NewShipment({ onCreated, model }) {
@@ -203,7 +367,11 @@ function NewShipment({ onCreated, model }) {
   const chunksRef = useRef([]);
   const [err, setErr] = useState("");
   const [saving, setSaving] = useState(false);
+  const [docName, setDocName] = useState("");
+  const [docBusy, setDocBusy] = useState(false);
+  const [docServed, setDocServed] = useState("");
   const fileRef = useRef(null);
+  const docRef = useRef(null);
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
@@ -266,16 +434,58 @@ function NewShipment({ onCreated, model }) {
     try {
       const { structureJob } = await import("./lib/meta.js");
       const out = await structureJob(note);
+      // The model may answer "12 pallets"; the quantity field is a number.
+      const qtyNum = Number((String(out.quantity ?? "").match(/\d+(?:[.,]\d+)?/) || [])[0]);
       setForm((f) => ({
         ...f,
         cargo: out.cargo ?? f.cargo,
-        qty: out.quantity ?? f.qty,
+        qty: Number.isFinite(qtyNum) ? qtyNum : f.qty,
         weightKg: out.weightKg ?? f.weightKg,
         origin: out.origin ?? f.origin,
         destination: out.destination ?? f.destination,
       }));
     } catch (e) {
       setErr(e.message);
+    }
+  }
+
+  // A supplier quotation (PDF, Word, Excel) goes to the bridge, which converts
+  // it to text locally and returns shipment fields. The supplier's figures come
+  // back as evidence in the note; the desk's own values stay the authority.
+  async function readDocFile(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setErr("");
+    setDocBusy(true);
+    try {
+      if (!isReadableDocument(file.name)) {
+        throw new Error(`${file.name} is not a readable document — send a PDF, Word, Excel or PowerPoint file.`);
+      }
+      const out = await readDocument(file);
+      const f = out.fields ?? {};
+      const qtyNum = Number((String(f.quantity ?? "").match(/\d+(?:[.,]\d+)?/) || [])[0]);
+      const wNum = Number((String(f.weightKg ?? "").match(/\d+(?:[.,]\d+)?/) || [])[0]);
+      setForm((prev) => ({
+        ...prev,
+        cargo: f.cargo ?? prev.cargo,
+        qty: Number.isFinite(qtyNum) ? qtyNum : prev.qty,
+        weightKg: Number.isFinite(wNum) ? wNum : prev.weightKg,
+        origin: f.origin ?? prev.origin,
+        destination: f.destination ?? prev.destination,
+        hs: f.hs ?? prev.hs,
+        originCountry: f.origin && f.origin !== prev.origin ? prev.originCountry : prev.originCountry,
+      }));
+      let evidence = `Read from ${file.name}`;
+      if (f.value != null && String(f.value).trim() !== "") evidence += `: supplier states ${f.value}${f.currency ? " " + f.currency : ""}`;
+      if (f.comments) evidence += ` — ${f.comments}`;
+      setNote((prev) => (prev ? prev + "\n" : "") + evidence);
+      setDocName(file.name);
+      setDocServed(out.servedBy);
+    } catch (err2) {
+      setErr(err2.message);
+    } finally {
+      setDocBusy(false);
+      if (docRef.current) docRef.current.value = "";
     }
   }
 
@@ -435,7 +645,7 @@ function NewShipment({ onCreated, model }) {
         </label>
       </div>
 
-      <h3>Intake — photograph and note</h3>
+      <h3>Intake — photograph, document and note</h3>
       <div className="row">
         <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={pickPhoto} style={{ maxWidth: 260 }} />
         <button className="ghost" onClick={readPhoto} disabled={!photoUrl}>
@@ -448,6 +658,17 @@ function NewShipment({ onCreated, model }) {
           <strong>Cargo read:</strong> {read.totalCount ?? "—"} items
           {read.items?.length ? ` (${read.items.map((i) => `${i.count} × ${i.label}`).join(", ")})` : ""}
           {read.notes ? ` — ${read.notes}` : ""}
+        </div>
+      )}
+
+      <div className="row" style={{ marginTop: 8 }}>
+        <input ref={docRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,.html,.htm" onChange={readDocFile} style={{ maxWidth: 260 }} />
+        <span className="hint">{docBusy ? "Reading document…" : "Attach a supplier quotation — the desk reads it into the fields."}</span>
+      </div>
+      {docName && (
+        <div className="hint" style={{ marginTop: 8 }}>
+          <strong>Document read:</strong> {docName}
+          {docServed ? ` — served by ${docServed}` : ""}
         </div>
       )}
 
@@ -486,9 +707,13 @@ function NewShipment({ onCreated, model }) {
 
 function QuoteView({ shipment, shipments, onPick, onChange, model }) {
   const [explanation, setExplanation] = useState("");
+  const [servedBy, setServedBy] = useState("");
   const [err, setErr] = useState("");
 
-  if (!shipment) return <section className="card"><h2>Quote</h2><p className="hint">Create a shipment first.</p></section>;
+  if (!shipment) return (
+    <Empty icon="file" title="No shipment selected"
+      body="The quote is built from a shipment's line values. Create one, or open an existing shipment from the list, and the landed-cost ladder appears here." />
+  );
   if (!shipment.value) return <section className="card"><h2>Quote</h2><p className="hint">This record has no cost data yet — pick another shipment.</p></section>;
 
   const lc = useMemo(
@@ -536,6 +761,7 @@ function QuoteView({ shipment, shipments, onPick, onChange, model }) {
         `${shipment.cargo}, ${shipment.origin} to ${shipment.destination}`
       );
       setExplanation(out.text);
+      setServedBy(out.servedBy || "");
     } catch (e) {
       setErr(e.message);
     }
@@ -607,7 +833,12 @@ function QuoteView({ shipment, shipments, onPick, onChange, model }) {
               <button className="ghost" onClick={explain} disabled={!model.live}>Explain this quote</button>
               {!model.live && <span className="hint">Needs a Meta key. The figures above do not.</span>}
             </div>
-            {explanation && <p className="hint" style={{ marginTop: 8 }}>{explanation}</p>}
+            {explanation && (
+              <p className="hint" style={{ marginTop: 8 }}>
+                {explanation}
+                {servedBy ? <span className="served"> — served by {servedBy}</span> : null}
+              </p>
+            )}
             {err && <div className="notice bad" style={{ marginTop: 8 }}>{err}</div>}
           </>
         )}
@@ -642,7 +873,10 @@ function TrackView({ shipment, shipments, onPick, onChange }) {
   const [podName, setPodName] = useState("");
   const [msg, setMsg] = useState("");
 
-  if (!shipment) return <section className="card"><h2>Tracking</h2><p className="hint">Create a shipment first.</p></section>;
+  if (!shipment) return (
+    <Empty icon="pin" title="Nothing to track yet"
+      body="Status events, delivery photos and signatures are held against a shipment. Create one to start the event log." />
+  );
 
   const plan = shipment.etaPlan;
 
@@ -762,7 +996,10 @@ function TrackView({ shipment, shipments, onPick, onChange }) {
 
 function ComplianceView({ shipment, shipments, onPick, onChange }) {
   const [msg, setMsg] = useState("");
-  if (!shipment) return <section className="card"><h2>Compliance</h2><p className="hint">Create a shipment first.</p></section>;
+  if (!shipment) return (
+    <Empty icon="shield" title="No shipment to check"
+      body="Classification, EAC origin, PVoC and waivers are checked per consignment. Create a shipment to run the checks." />
+  );
 
   const hsInfo = resolveHS(shipment.hs);
   const dossier = shipment.dossier ?? [];
@@ -2071,6 +2308,16 @@ function Settings({ backend, model, onChanged, queue, onSync, busy }) {
     setMsg("Model settings saved on this device. The key is not shown again.");
     onChanged();
   }
+  async function useBridge() {
+    const host = window.location.hostname || "127.0.0.1";
+    const url = `http://${host}:8787/v1`;
+    const next = { baseUrl: url, apiKey: "local-bridge" };
+    setMd(next);
+    await setModelConfig(next);
+    setMsg(`Connected to the local model bridge at ${url}. The provider key stays on the machine running the bridge; this browser holds none.`);
+    onChanged();
+  }
+
   async function doSync() {
     const res = await onSync();
     setMsg(`Sync: ${res.reason} · pushed ${res.pushed ?? 0}, pulled ${res.pulled ?? 0}`);
@@ -2116,10 +2363,11 @@ function Settings({ backend, model, onChanged, queue, onSync, busy }) {
         </div>
         <div className="row" style={{ marginTop: 10 }}>
           <button className="ghost" onClick={saveModel}>Save model settings</button>
+          <button className="ghost" onClick={useBridge}>Use local bridge</button>
           <span className={`pill ${model.live ? "ok" : "warn"}`}>{model.live ? "live" : model.reason}</span>
         </div>
         <p className="hint" style={{ marginTop: 8 }}>
-          Four jobs: read a cargo photo, transcribe a voice note, match a lane, explain a quote. None of them sets a price or a date. The key stays on this device.
+          Four jobs: read a cargo photo, transcribe a voice note, match a lane, explain a quote. None of them sets a price or a date. The key stays on this device. The local bridge runs on your machine, holds the provider key there, and reports in every answer which upstream model actually served it.
         </p>
         {msg && <div className="notice" style={{ marginTop: 10 }}>{msg}</div>}
       </section>

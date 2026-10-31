@@ -2,8 +2,9 @@
  * Meta model layer.
  *
  * Nothing here ever computes a price or a date. The engine does that.
- * This layer is used for four jobs only: reading a photo of cargo, transcribing a
- * voice note, matching a job to a lane, and explaining a quote in plain language.
+ * This layer is used for five jobs only: reading a photo of cargo, reading a
+ * supplier document (PDF, Word, Excel) into fields, transcribing a voice note,
+ * matching a job to a lane, and explaining a quote in plain language.
  *
  * Without a live key every call throws ModelUnavailable, and the UI says so.
  * It must never fall back to invented output.
@@ -72,7 +73,13 @@ export async function probe() {
   }
   try {
     const res = await fetch(`${cfg.baseUrl.replace(/\/$/, "")}/models`, { headers: { Authorization: `Bearer ${cfg.apiKey}` } });
-    return { live: res.ok, reason: res.ok ? "reachable" : `HTTP ${res.status}`, models: MODELS };
+    if (!res.ok) return { live: false, reason: 'HTTP ' + res.status, models: MODELS };
+    // A router-style bridge returns a list filtered to our app models; a raw
+    // Meta endpoint returns the account's full model list. Either is live.
+    const body = await res.json().catch(() => ({}));
+    const ids = Array.isArray(body && body.data) ? body.data.map((m) => m.id) : [];
+    const bridged = ids.length > 0 && ids.indexOf('muse-spark-1.3') < 0;
+    return { live: true, reason: bridged ? 'reachable using local bridge' : 'reachable', models: MODELS, viaBridge: bridged };
   } catch (err) {
     return { live: false, reason: err.message, models: MODELS };
   }
@@ -188,4 +195,38 @@ export async function matchLane(job, lanes) {
   } catch {
     return { laneId: null, laneName: null, reason: raw, confidence: 0, model: MODELS.reason, unparsed: true };
   }
+}
+
+/**
+ * Read a supplier quotation or delivery document into shipment fields.
+ * The file goes to the bridge as base64; the bridge converts it to text
+ * locally and returns structured fields. Supplier figures come back verbatim
+ * as evidence; the desk's own costing is untouched.
+ * Returns {fields, servedBy}.
+ */
+const DOC_TYPES = [".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".csv", ".txt", ".html", ".htm"];
+
+export function isReadableDocument(name) {
+  const lower = String(name || "").toLowerCase();
+  return DOC_TYPES.some((t) => lower.endsWith(t));
+}
+
+function fileToB64(file) {
+  return new Promise((ok, bad) => {
+    const fr = new FileReader();
+    fr.onload = () => ok(String(fr.result).split(",")[1]);
+    fr.onerror = bad;
+    fr.readAsDataURL(file);
+  });
+}
+
+export async function readDocument(file) {
+  const cfg = await getModelConfig();
+  if (!cfg.baseUrl || !cfg.apiKey) throw new ModelUnavailable("No model endpoint is configured. Set it in Settings first.");
+  const out = await call("/v1/documents/extract", {
+    name: file.name,
+    mime: file.type || "application/octet-stream",
+    data_b64: await fileToB64(file),
+  }, { timeoutMs: 120000 });
+  return { fields: out.fields ?? {}, servedBy: out?.bridge?.served_by ?? "meta:direct" };
 }

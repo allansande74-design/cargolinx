@@ -1,0 +1,111 @@
+import React, { useState } from "react";
+
+const NAVY = "#0a1f3c";
+const GOLD = "#c9a227";
+const GOLD_LIGHT = "#f5e7bd";
+
+/**
+ * AmandaBar — bottom chat bar, safe to mount on every page.
+ * Lazy-imports explainQuote from ./lib/meta.js on submit only.
+ * explainQuote(quoteFigures, context): figures come from contextHint or
+ * fall back to the raw question text; the model only restates figures,
+ * never computes. Without a model key it throws ModelUnavailable and we
+ * show the labelled fallback instead of invented output.
+ */
+export default function AmandaBar({ contextHint = "" }) {
+  const [question, setQuestion] = useState("");
+  const [reply, setReply] = useState("");
+  const [replyKind, setReplyKind] = useState("idle"); // idle | ok | fallback
+  const [busy, setBusy] = useState(false);
+
+  async function onSubmit(e) {
+    e.preventDefault();
+    const q = question.trim();
+    if (!q || busy) return;
+    setBusy(true);
+    setReply("");
+    setReplyKind("idle");
+    try {
+      const { explainQuote } = await import("./lib/meta.js");
+      const figures = contextHint && contextHint.trim() ? contextHint.trim() : "none";
+      const out = await explainQuote({ question: q, figures }, q);
+      setReply(out && out.text ? out.text : "(empty answer from model)");
+      setReplyKind("ok");
+    } catch (err) {
+      const msg = err && err.message ? err.message : String(err);
+      const label = err && err.name === "ModelUnavailable" ? "Amanda (offline): " : "Amanda (unavailable): ";
+      setReply(label + msg);
+      setReplyKind("fallback");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 50,
+        background: NAVY,
+        borderTop: `2px solid ${GOLD}`,
+        padding: "8px 12px",
+      }}
+    >
+      <form
+        onSubmit={onSubmit}
+        style={{ display: "flex", gap: 8, maxWidth: 900, margin: "0 auto", alignItems: "center" }}
+      >
+        <span style={{ color: GOLD, fontWeight: 700, whiteSpace: "nowrap" }}>Amanda</span>
+        <input
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          placeholder="Ask Amanda about this page…"
+          aria-label="Ask Amanda"
+          style={{
+            flex: 1,
+            padding: "8px 10px",
+            borderRadius: 6,
+            border: `1px solid ${GOLD}`,
+            background: "#ffffff",
+            color: NAVY,
+          }}
+        />
+        <button
+          type="submit"
+          disabled={busy || !question.trim()}
+          style={{
+            padding: "8px 16px",
+            borderRadius: 6,
+            border: "none",
+            background: busy ? "#8a7a3a" : GOLD,
+            color: NAVY,
+            fontWeight: 700,
+            cursor: busy ? "wait" : "pointer",
+          }}
+        >
+          {busy ? "…" : "Ask"}
+        </button>
+      </form>
+      {replyKind !== "idle" && (
+        <div
+          role="status"
+          style={{
+            maxWidth: 900,
+            margin: "8px auto 0",
+            padding: "8px 10px",
+            borderRadius: 6,
+            background: replyKind === "ok" ? "#ffffff" : GOLD_LIGHT,
+            color: NAVY,
+            fontSize: 14,
+            whiteSpace: "pre-wrap",
+          }}
+        >
+          {reply}
+        </div>
+      )}
+    </div>
+  );
+}

@@ -97,9 +97,10 @@ Verified in the browser on the live build: a delivery message queued, approved a
 
 ## Not yet verified
 
-- The Meta model calls (photo counting, transcription, lane matching, explanation) are written against
-  the documented endpoint shape but have **not been executed** — no live key was available on the build
-  machine. Until then the UI reports "models off" and the app runs on the deterministic engine alone.
+- The Meta model calls (photo counting, transcription, lane matching, explanation) run
+  direct-first against api.meta.ai (verified live 31 Oct 2026; receipts in
+  swarm/hackathon/evidence/meta_tool_runs.jsonl). Where the direct line fails the UI
+  reports the labelled fallback and the app keeps running on the deterministic engine.
 - Lane speeds are planner defaults, marked as such in the interface; replace them with the operator's
   own run data before any ETA is promised to a client.
 - The VAT base composition (CIF + duty + excise + IDF + RDL) is a modelling choice; confirm against a
@@ -129,9 +130,8 @@ npm run build && npm run preview
 
 ## Licence
 
-Apache License 2.0 — see `LICENSE`. The entry can be judged, forked and reused, including commercially,
-provided the notice and attribution are kept. The patent grant is included, which matters for a product
-that will be sold to traders rather than merely demonstrated.
+MIT License — see `LICENSE` (© 2026 Allan Sande, Altovex Global Logistics). The entry can be judged, forked and reused,
+including commercially, provided the notice and attribution are kept.
 
 ## Submission readiness checklist (added 29 October 2026)
 
@@ -146,18 +146,19 @@ What is verified:
 - [x] `npm test` invokes `node --test`, and `npm run build` invokes `vite build`.
 - [x] `.gitignore` excludes `node_modules/` and `dist/`, so neither build output nor installed
       dependencies reach the repository.
-- [x] A licence is in the tree — Apache 2.0 in `LICENSE`, named in the Licence section above.
+- [x] A licence is in the tree — MIT in `LICENSE` (© 2026 Allan Sande, Altovex Global Logistics), named in the Licence section above.
 - [x] `docs/CONTRIBUTION.md` records what was built, what is measured, and what is explicitly not
       claimed.
-- [x] The Meta model layer is unverified rather than claimed: no live key was available on the build
-      machine, so photo counting, transcription, lane matching and explanation have never been
-      executed, and the interface reports "models off".
+- [x] The Meta model layer is live direct: muse-spark-1.3 and muse-wonder-1.0 answer on
+      api.meta.ai (verified 31 Oct 2026; chat 1716 ms, doc extract 9376 ms; receipts in
+      swarm/hackathon/evidence/meta_tool_runs.jsonl). Photo counting, transcription, lane
+      matching and explanation run direct-first with labelled fallback.
 
 What is still missing before this can be submitted:
 
-- [ ] A public repository URL — the code has not been published.
-- [ ] A deployed submission URL — nothing is hosted for the judges to open.
-- [ ] A Meta model key, so the four model calls can be run once and their real output recorded.
+- [x] A public repository URL — https://github.com/allansande74-design/cargolinx (verified HTTP 200).
+- [ ] A deployed submission URL — build in progress; judges open the live URL from the status report.
+- [x] A Meta model key — live 31 Oct 2026; real calls receipted in swarm/hackathon/evidence/meta_tool_runs.jsonl.
 
 ## Network scale-up: 26 countries, bloc corridors, fleet tiers
 
