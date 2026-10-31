@@ -53,13 +53,16 @@ const ROUTES = {
     { via: "openrouter", id: "meta/muse-wonder", why: "Meta Muse Wonder, served by OpenRouter" },
   ],
   "sam-3.1": [
-    { via: "openrouter", id: "google/gemini-3.1-flash-lite", why: "vision fallback: SAM is Meta-only, Gemini 3.1 Flash Lite reads photos" },
+    { via: "meta", id: "sam-3.1", why: "Meta SAM 3.1 segmentation, direct line via /v1/responses" },
+    { via: "openrouter", id: "google/gemini-3.1-flash-lite", why: "vision fallback if Meta direct fails" },
   ],
   "muse-image-1.0": [
-    { via: "openrouter", id: "google/gemini-3.1-flash-image", why: "image fallback: Muse Image is Meta-only" },
+    { via: "meta", id: "muse-image-1.0", why: "Meta Muse Image generation, direct line via /v1/responses" },
+    { via: "openrouter", id: "google/gemini-3.1-flash-image", why: "image fallback if Meta direct fails" },
   ],
   "muse-voice-transcribe-1.0": [
-    { via: "openrouter", id: "google/gemini-3.1-flash-lite", why: "audio fallback: Meta transcriber is Meta-only, Gemini takes audio input" },
+    { via: "meta", id: "muse-voice-transcribe-1.0", why: "Meta voice transcriber, direct line via /v1/asr/transcribe" },
+    { via: "openrouter", id: "google/gemini-3.1-flash-lite", why: "audio fallback if Meta direct fails" },
   ],
 };
 
@@ -188,7 +191,7 @@ const server = createServer(async (req, res) => {
       forwarded.reasoning = { effort: "low" };
       if (!forwarded.max_tokens || forwarded.max_tokens < 3000) forwarded.max_tokens = 3000;
     }
-    const directOk = META_KEY && target.id.startsWith("meta/muse-");
+    const directOk = META_KEY && (target.via === "meta" || target.id.startsWith("meta/muse-"));
     let r = null;
     let scheme = null;
     if (directOk) {
