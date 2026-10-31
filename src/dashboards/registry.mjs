@@ -16,6 +16,7 @@ export const DASHBOARDS = [
   { key: "procurement", title: "Procurement Dashboard", role: "procurement", file: "./procurement.jsx" },
   { key: "trade-finance-escrow", title: "Trade Finance & Escrow Dashboard", role: "trade-finance-escrow", file: "./trade-finance-escrow.jsx" },
   { key: "overview", title: "Overview Dashboard", role: "overview", file: "./overview.jsx" },
+  { key: "match", title: "Match Dashboard", role: "operations", file: "./match.jsx" },
 ];
 
 export function stubStatus() {
