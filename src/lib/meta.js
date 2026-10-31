@@ -115,12 +115,16 @@ export async function readCargoPhoto(dataUrl, hint = "") {
 }
 
 /** Transcribe a driver's voice note into text (no interpretation). */
-export async function transcribeVoice(blob) {
+export async function transcribeVoice(blob, { language = null } = {}) {
   const cfg = await getModelConfig();
   if (!cfg.baseUrl || !cfg.apiKey) throw new ModelUnavailable("No Meta model key is configured.");
   const form = new FormData();
   form.append("file", blob, "note.webm");
   form.append("model", MODELS.voice);
+  // Muse Voice Transcribe: 25 evaluated languages + code-switching, single
+  // model. Hint the expected language (ISO code: en, sw, fr, rw, lg, am, ny,
+  // zu, ln); omit to auto-detect. Same endpoint for every country.
+  if (language) form.append("language", language);
   const res = await fetch(`${cfg.baseUrl.replace(/\/$/, "")}/audio/transcriptions`, {
     method: "POST",
     headers: { Authorization: `Bearer ${cfg.apiKey}` },
