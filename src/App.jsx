@@ -23,6 +23,7 @@ import { list as listPlugins, status as pluginStatus, configure as configurePlug
 import NetworkView from "./NetworkView.jsx";
 import Landing from "./Landing.jsx";
 import Auth from "./Auth.jsx";
+import AmandaBar from "./AmandaBar.jsx";
 
 const money = (n, ccy = "KES") =>
   `${ccy} ${Number(n || 0).toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -330,12 +331,27 @@ export default function App() {
   }
 
   if (route === "desk") {
-    return <Desk onSignOut={signOut} />;
+    return (
+      <>
+        <Desk onSignOut={signOut} />
+        <AmandaBar />
+      </>
+    );
   }
   if (route === "signin") {
-    return <Auth onEnter={() => go("#/desk/new")} onHome={() => go("#/")} />;
+    return (
+      <>
+        <Auth onEnter={() => go("#/desk/new")} onHome={() => go("#/")} />
+        <AmandaBar />
+      </>
+    );
   }
-  return <Landing onEnter={() => go("#/desk/new")} onSignIn={() => go("#/signin")} />;
+  return (
+    <>
+      <Landing onEnter={() => go("#/desk/new")} onSignIn={() => go("#/signin")} />
+      <AmandaBar />
+    </>
+  );
 }
 
 function NewShipment({ onCreated, model }) {

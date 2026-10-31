@@ -1,0 +1,25 @@
+{
+  "name": "CargoLinx — Altovex Global Logistics",
+  "short_name": "CargoLinx",
+  "description": "Order lifecycle, quotes, documents and clearance for Altovex Global Logistics. Am Amanda, your trade desk.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#071a33",
+  "theme_color": "#071a33",
+  "categories": ["business", "productivity", "logistics"],
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-1024.png", "sizes": "1024x1024", "type": "image/png", "purpose": "any" },
+    { "src": "/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "New quote", "short_name": "Quote", "url": "/?view=quote" },
+    { "name": "My orders", "short_name": "Orders", "url": "/?view=orders" },
+    { "name": "Ask Amanda", "short_name": "Amanda", "url": "/?view=amanda" }
+  ]
+}

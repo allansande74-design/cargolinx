@@ -7,22 +7,36 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.svg"],
+      includeAssets: ["favicon.svg", "apple-touch-icon.png", "icon-192.png", "icon-512.png"],
       manifest: {
-        name: "CargoLinx — Offline Freight Desk",
+        id: "/",
+        name: "CargoLinx — Altovex Global Logistics",
         short_name: "CargoLinx",
-        description: "Landed cost, quoting, ETA and proof of delivery for East African corridors. Works offline.",
-        theme_color: "#0b2545",
-        background_color: "#0b2545",
+        description:
+          "Order lifecycle, quotes, documents and clearance for Altovex Global Logistics. Works offline.",
+        lang: "en",
+        theme_color: "#071a33",
+        background_color: "#071a33",
         display: "standalone",
+        orientation: "portrait-primary",
         start_url: "/",
+        scope: "/",
+        categories: ["business", "productivity"],
         icons: [
-          { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
-          { src: "/icon-512.png", sizes: "512x512", type: "image/png" },
+          { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+          { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+          { src: "/icon-1024.png", sizes: "1024x1024", type: "image/png", purpose: "any" },
+          { src: "/maskable-192.png", sizes: "192x192", type: "image/png", purpose: "maskable" },
+          { src: "/maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+        ],
+        shortcuts: [
+          { name: "New quote", short_name: "Quote", url: "/?view=quote" },
+          { name: "My orders", short_name: "Orders", url: "/?view=orders" },
+          { name: "Ask Amanda", short_name: "Amanda", url: "/?view=amanda" },
         ],
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,html,svg,png,woff2}"],
+        globPatterns: ["**/*.{js,css,html,svg,png,jpg,woff2,webmanifest}"],
         navigateFallback: "/index.html",
         runtimeCaching: [
           {
