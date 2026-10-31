@@ -4,6 +4,7 @@
  * Usage: node cli/quote.mjs --goods 1200000 --freight 250000 --duty 0.25 --margin 0.2 --qty 20
  */
 import { landedCost, quote, floorPrice } from "../engine/landed.mjs";
+import { resolveHS, pvocApplicable, pvocFee, FX } from "../engine/tariff.mjs";
 
 const args = process.argv.slice(2);
 const arg = (name, dflt) => {
@@ -25,6 +26,23 @@ const input = {
   other: num("other", 0),
   quantity: num("qty", 1),
 };
+
+// A regulated code carries a conformity fee; the desk adds it, so the CLI must too,
+// or the two paths quote different totals for the same shipment.
+const hs = arg("hs", null);
+let pvocNote = "";
+if (hs) {
+  const item = resolveHS(hs);
+  const origin = String(arg("origin", "CN")).toUpperCase();
+  const verdict = pvocApplicable({ item, originCountry: origin });
+  if (verdict.required) {
+    const fee = pvocFee({ fobUsd: input.goods / FX.USD_KES, route: arg("pvoc-route", "A") });
+    input.other += fee.kes;
+    pvocNote = `PVoC route ${fee.route} on FOB USD ${fee.fobUsd.toFixed(2)}: USD ${fee.usd.toFixed(2)} = KES ${fee.kes.toLocaleString("en-KE", { minimumFractionDigits: 2 })}${fee.capped ? ` (${fee.capped} of the schedule)` : ""}`;
+  } else {
+    pvocNote = `PVoC not charged: ${verdict.reason}`;
+  }
+}
 
 const lc = landedCost(input);
 const margin = num("margin", 0.2);
@@ -52,4 +70,5 @@ console.log(`${pad("VAT on sale", 64)}${money(q.vatOnSale).padStart(14)}`);
 console.log(`${pad("Selling price incl. VAT", 64)}${money(q.priceIncVat).padStart(14)}`);
 console.log(`${pad("Gross profit", 64)}${money(q.grossProfit).padStart(14)}`);
 console.log(`${pad("Cheapest defensible price (15% floor)", 64)}${money(f.floorPrice).padStart(14)}`);
+if (pvocNote) console.log(pvocNote);
 console.log("");

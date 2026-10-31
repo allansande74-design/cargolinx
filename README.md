@@ -27,7 +27,10 @@ explain a quote. **No model ever sets a price or a date.**
 - 20 units, goods KES 1,200,000, freight KES 250,000, 25% duty band, clearing 45,000, transport
   60,000, last mile 12,000 → CIF 1,457,250.00; duty 364,312.50; IDF 36,431.25; RDL 29,145.00;
   VAT 301,942.20; **landed cost 2,306,080.95**; quote at 30% = **2,863,055.36** ex-VAT,
-  **3,321,144.22** incl VAT; floor price (15%) 2,357,810.29.
+  **3,321,144.22** incl VAT; floor price (15%) 2,357,810.29. This run uses a code that is not a
+  regulated category, so no conformity fee applies. A regulated code (for example HS 8544.42)
+  adds the PVoC fee — KES 34,404.95 at the schedule minimum for that consignment — and the
+  command below reproduces it.
 - Offline: an ETA delay recorded with no network, page reloaded from the service worker with the data
   intact and one write queued; on reconnect `pushed 1, pulled 1`, outbox 0, one server row, no
   duplicate, local record intact.
