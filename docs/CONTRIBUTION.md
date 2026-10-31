@@ -13,7 +13,7 @@ Built during the event window; every figure below is measured from this reposito
 | Dataset | 26 African markets, one verified against its sources, the rest marked draft and refused by `defineDataset` until sourced | `engine/dataset.mjs` |
 | Meta model layer | Task-scoped model calls behind a configuration gate; unconfigured tasks take a deterministic path and say so | `engine/meta/client.mjs`, `engine/meta/tasks.mjs` |
 | Offline layer | IndexedDB persistence so the trader keeps working with no signal | `src/` |
-| Verification | 320 tests, 0 failing, plus a judge simulation scoring the entry against the public rubric | `tests/` |
+| Verification | 337 tests, 0 failing, plus a judge simulation scoring the entry against the public rubric | `tests/` |
 
 ## Deliberate design decisions
 
@@ -32,6 +32,13 @@ Built during the event window; every figure below is measured from this reposito
   endpoints and on open-weight deployments without a rewrite.
 - Image work uses Muse Image; transcription uses Muse Voice Transcribe; segmentation and counting use
   SAM 3.1 — each behind the same gate.
+
+## The demo and the measurements
+
+- `cargolinx-demo-165s.mp4` — 165 seconds, nine scenes, captured from the running build.
+- `docs/PERF.md` — the browser's own numbers for the deployed build: LCP 1,084 ms cold, 100 ms
+  warm, interaction latency 32 ms, CLS 0.000 on the landing page and 0.180 on the desk.
+- `docs/HACKATHON.md` — the contribution card for this submission.
 
 ## What is not claimed
 

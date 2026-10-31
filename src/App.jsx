@@ -767,12 +767,16 @@ function QuoteView({ shipment, shipments, onPick, onChange, model }) {
     try {
       const out = await explainQuote(
         {
-          landedCostExVat: lc.totals.netCostExVat,
-          statutory: lc.totals.statutory,
-          cif: lc.totals.cif,
-          price: q.price,
-          marginPct: margin,
-          dutyRate: shipment.dutyRate,
+          "landed cost before VAT": lc.totals.netCostExVat,
+          "statutory total (duty, IDF, RDL, VAT)": lc.totals.statutory,
+          "customs value (CIF)": lc.totals.cif,
+          "import duty": (lc.lines ?? []).find((l) => l.code === "DUTY")?.amount ?? null,
+          "VAT on import": (lc.lines ?? []).find((l) => l.code === "VAT")?.amount ?? null,
+          "clearing, transport and last mile": (lc.lines ?? [])
+            .filter((l) => ["CLEARING", "TRANSPORT", "LASTMILE", "PORT", "OTHER"].includes(l.code))
+            .reduce((s, l) => s + (Number(l.amount) || 0), 0),
+          "quoted price before VAT": q.price,
+          "margin per cent": Math.round(margin * 1000) / 10,
         },
         `${shipment.cargo}, ${shipment.origin} to ${shipment.destination}`
       );

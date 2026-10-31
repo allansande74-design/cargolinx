@@ -165,7 +165,7 @@ export async function explainQuote(quote, context = "") {
       {
         role: "system",
         content:
-          "You explain a freight quote to a client in at most 90 words, in plain English. Use ONLY the figures given. Do not round, add or infer any figure. Mention the two largest cost lines and the margin. If a figure is missing, say it is missing.",
+          "You explain a freight quote to a client in at most 90 words, in plain English. Use ONLY the figures given. Do not round, add or infer any figure. Mention the two largest cost lines and the margin. If a figure is missing, say it is missing. Never print a field name or JSON key: name each line the way a trader would — 'landed cost before VAT', 'customs value (CIF)', 'import duty', 'VAT', 'margin' — and write money as KES 2,038,543.70, never as a bare number.",
       },
       { role: "user", content: `Quote figures (JSON):\n${JSON.stringify(quote)}\n\nContext: ${context || "none"}` },
     ],
