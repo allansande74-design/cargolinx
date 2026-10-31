@@ -6,6 +6,20 @@
 **Repository:** https://github.com/allansande74-design/cargolinx
 **Licence:** MIT (see `LICENSE`).
 
+## Where this entry sits in the event
+
+Verified on the event page on 31 October 2026:
+
+- **Track:** Startup — "for teams and founders building a real product… judged on technical
+  execution and whether it holds up in production". Altovex Global Logistics is a trading company
+  running the desk on its own corridor shipments, which is what the track asks for.
+- **Theme:** Build for Your World — a problem the entrant knows firsthand, in his own domain.
+- **Submissions close 4 November, 9:00 PM ET**, which is 05:00 EAT on 5 November. The build is
+  worked to 12:00 EAT on 4 November, seventeen hours earlier, so the entry is filed with margin.
+- **Judging runs 4–8 November; winners are announced on 9 November.**
+- The submission itself is filed through the participant portal, which needs the entrant's login;
+  the agent prepares the pack, the entrant files it.
+
 ## The problem the build answers
 
 A trader on the Mombasa–Kampala corridor gets a quote two days late and cannot defend the
