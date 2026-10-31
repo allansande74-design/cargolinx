@@ -12,3 +12,6 @@ dev-dist/
 # deploy state and claim tokens — never commit
 .herenow/
 dist-pub/
+
+# local: read-only backup of a root-owned .git
+.git-rootowned-backup/
