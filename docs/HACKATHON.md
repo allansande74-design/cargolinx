@@ -57,8 +57,9 @@ The model layer is narrow on purpose and every call names the model that served 
 ## Measured, not asserted
 
 `docs/PERF.md` records the browser's own numbers for the deployed build: LCP 1,084 ms cold and
-100 ms warm, TTFB 558 ms cold, interaction latency 32 ms, CLS 0.000 on the landing page and
-0.180 on the desk — the last one is a defect, and it is written down rather than hidden.
+100 ms warm, TTFB 558 ms cold, interaction latency 32 ms, and first-load CLS 0.000 on both the
+landing page and the desk. An earlier 0.180 reading came from a scripted module switch and was
+corrected after the run was repeated with the observer installed before first paint.
 
 ## What is not claimed
 

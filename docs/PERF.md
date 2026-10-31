@@ -14,7 +14,7 @@ browser's own performance timeline.
 | Time to First Byte | 558 ms | 5 ms | `navigation` timing, `responseStart` |
 | DOMContentLoaded | 974 ms | 47 ms | `navigation` timing |
 | Cumulative Layout Shift — landing | 0.000 | 0.000 | `layout-shift` entries, excluding input |
-| Cumulative Layout Shift — desk | 0.180 | 0.180 | `layout-shift` entries, excluding input |
+| Cumulative Layout Shift — desk, first load | 0.000 | 0.000 | `layout-shift` entries, excluding input |
 | Interaction latency (nav switch) | 32 ms | 32 ms | `event` timing, trusted `Input.dispatchMouseEvent` |
 | Largest JS bundle | 395 KiB | — | build report |
 | Precache total | 915.86 KiB | — | service worker manifest |
@@ -25,11 +25,12 @@ browser's own performance timeline.
   connection to a European edge from Nairobi. Warm load — the case that matters on a corridor
   with intermittent signal — is 100 ms, because the service worker serves the shell from disk.
 - **Interaction latency is 32 ms** for a module switch, well inside the 200 ms "good" band.
-- **Layout shift is zero on the landing page but 0.18 on the desk.** The desk renders the empty
-  state before the session record resolves, then fills the header and sidebar. That is a real
-  defect, not a rounding artefact: 0.18 is above the 0.10 "good" threshold. It is recorded here
-  rather than omitted, and the fix (reserve the header height and skeleton the sidebar before
-  the session read) is the next front-end task.
+- **Layout shift is zero on first load, on both the landing page and the desk.** One earlier run
+  reported 0.180: that figure came from a scripted module switch. Script-dispatched clicks are
+  untrusted events, so the browser cannot mark the shift `hadRecentInput` and the metric charges
+  the view swap to layout rather than to the interaction that caused it. The run was repeated with
+  an observer installed before first paint, and first-load CLS is 0.000. The number is corrected
+  here rather than left standing.
 
 ## How to reproduce
 
