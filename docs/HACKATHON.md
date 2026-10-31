@@ -27,7 +27,7 @@ and reads; it never prices and never dates.
 | Desk | `src/App.jsx` | Twelve modules on one ledger: shipment, quote, tracking, compliance, sourcing, suppliers, orders, money, warehouse, messages, network, plugins |
 | Meta model layer | `src/lib/meta.js` | Four task-scoped calls: cargo photo read, voice note transcript, lane match, quote explanation |
 | Model bridge | `server/proxy.mjs` | Holds the provider key server-side so the browser never carries one |
-| Tests | `tests/` | 337 tests, 0 failing (`npm test`) |
+| Tests | `tests/` | 341 tests, 0 failing (`npm test`) |
 
 ## Working with Meta models
 
@@ -78,7 +78,7 @@ corrected after the run was repeated with the observer installed before first pa
 ```bash
 npm install
 npm run dev            # http://localhost:5173
-npm test               # 337 tests
+npm test               # 341 tests
 node cli/quote.mjs --qty 20 --clearing 48000 --transport 55000 --lastmile 14000 --margin 0.30
 node server/proxy.mjs --port=8787   # optional model bridge; the desk works without it
 ```
