@@ -1,0 +1,161 @@
+{
+ "file": "/home/amanda/out/demo/cargolinx-demo-v4-captioned.mp4",
+ "bytes": 16529629,
+ "duration_s": 237.112,
+ "score": 100.0,
+ "verdict": "PASS",
+ "checks": [
+  {
+   "check": "Picture resolution",
+   "pass": true,
+   "measured": "1920x1080",
+   "target": "at least 1920x1080",
+   "weight": 1
+  },
+  {
+   "check": "Frame rate",
+   "pass": true,
+   "measured": "25 fps",
+   "target": "25 fps",
+   "weight": 1
+  },
+  {
+   "check": "Video codec",
+   "pass": true,
+   "measured": "h264",
+   "target": "h264 (widest support)",
+   "weight": 1
+  },
+  {
+   "check": "Audio present",
+   "pass": true,
+   "measured": "aac",
+   "target": "aac",
+   "weight": 1
+  },
+  {
+   "check": "Duration in window",
+   "pass": true,
+   "measured": "237.1 s",
+   "target": "170-300 s",
+   "weight": 1
+  },
+  {
+   "check": "Integrated loudness",
+   "pass": true,
+   "measured": "-16.3 LUFS",
+   "target": "-16 +/- 1.5 LUFS",
+   "weight": 1
+  },
+  {
+   "check": "True peak",
+   "pass": true,
+   "measured": "-2.2 dBTP",
+   "target": "at or below -1.0 dBTP",
+   "weight": 1
+  },
+  {
+   "check": "Caption count",
+   "pass": true,
+   "measured": "118 events",
+   "target": "more than 100 events",
+   "weight": 1
+  },
+  {
+   "check": "Line length",
+   "pass": true,
+   "measured": "6 words worst line",
+   "target": "8 words or fewer",
+   "weight": 1
+  },
+  {
+   "check": "Reading speed",
+   "pass": true,
+   "measured": "21.1 chars/s at the 90th percentile",
+   "target": "22 characters per second or less",
+   "weight": 1
+  },
+  {
+   "check": "Caption safe margin",
+   "pass": true,
+   "measured": "MarginV 59",
+   "target": "at least 40 units above the frame edge",
+   "weight": 1
+  },
+  {
+   "check": "Captions cover the spoken word",
+   "pass": true,
+   "measured": "99.0 % of speech covered",
+   "target": "95 per cent or more of every spoken passage",
+   "weight": 1
+  },
+  {
+   "check": "Captions across the film",
+   "pass": true,
+   "measured": "80.7 % of the film",
+   "target": "75 per cent or more of the running time",
+   "weight": 1
+  },
+  {
+   "check": "Caption timing against the voice",
+   "pass": true,
+   "measured": "+0.00 s median offset",
+   "target": "within 0.25 s of an independent transcription",
+   "weight": 1
+  },
+  {
+   "check": "Captions start and end with the voice",
+   "pass": true,
+   "measured": "first 0.0 s vs 0.0 s; last 235.6 s vs 235.6 s",
+   "target": "opening and closing captions within 2 s and 3 s of the voice",
+   "weight": 1
+  },
+  {
+   "check": "No blank frames",
+   "pass": true,
+   "measured": "2 blank sample(s), longest run 1 s",
+   "target": "a dissolve may last one sampled second; two or more is a dead shot",
+   "weight": 1
+  },
+  {
+   "check": "No still holds",
+   "pass": true,
+   "measured": "longest hold 1 s; slowest second still changes by 0.043",
+   "target": "nothing is frozen for more than 2 s; a calm card is not a freeze",
+   "weight": 1
+  },
+  {
+   "check": "No repeated frames",
+   "pass": true,
+   "measured": "0 of 237 samples are exact repeats (0 %)",
+   "target": "5 per cent or fewer of sampled frames repeat exactly",
+   "weight": 1
+  }
+ ],
+ "picture": {
+  "width": 1920,
+  "height": 1080,
+  "fps": 25.0
+ },
+ "sound": {
+  "lufs": -16.3,
+  "true_peak": -2.2
+ },
+ "captions": {
+  "events": 118,
+  "covered_s": 191.4
+ },
+ "motion": {
+  "samples": 237,
+  "blank_at": [
+   144,
+   181
+  ],
+  "blank_run": 1,
+  "hold_run": 1,
+  "repeated": 0,
+  "repeated_share": 0.0,
+  "min_change": 0.043,
+  "repeat_at": []
+ }
+}
