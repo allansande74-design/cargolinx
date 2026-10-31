@@ -11,3 +11,4 @@ dev-dist/
 
 # deploy state and claim tokens — never commit
 .herenow/
+dist-pub/
