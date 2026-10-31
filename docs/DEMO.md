@@ -1,12 +1,37 @@
-# The 165-second demo — what is on screen, and why each scene is there
+# The demo cuts — what each one is for
 
-File: `cargolinx-demo-165s.mp4` — 1920 × 1080, 25 fps, H.264 + AAC, 164.98 s, −16.2 LUFS.
-Captured on 31 October 2026 from the running build (local instance on `localhost:5173` with the
-model bridge, and the deployed build on `here.now` for the offline scene). No mock-ups, no
-reconstructions, no invented figures: every number on screen is what the engine returned for the
-shipment in the video.
+Two cuts exist, from the same engine and the same figures.
 
-## Scenes
+| File | Length | What it is |
+|---|---|---|
+| `cargolinx-demo-v3.mp4` | 165.8 s | Presenter-led animated cut: Amanda introduces the problem and Allan Sande, the desk is then drawn scene by scene from the engine's own figures, and the film closes on the ask. |
+| `cargolinx-demo-165s.mp4` | 165.1 s | Screen-capture cut: the same story told over the running product — the real form, the real ladder, the real model answer, the real quotation, airplane mode. |
+
+The animated cut explains; the filmed cut proves. A judge who wants to see it running watches the
+second; a funder or a first-time viewer watches the first.
+
+## The animated cut, scene by scene
+
+| # | Time | Scene | What is on screen |
+|---|---|---|---|
+| 0 | 0:00 | Introduction | Amanda's panel, then Allan Sande's portrait with his name and title |
+| 1 | 0:18 | The problem | *Two days late. Nobody can defend the number.* over the corridor and a clock sweeping twice |
+| 2 | 0:31 | The pain, named | Five lines land in sequence, each with its cost |
+| 3 | 0:46 | Who we are | The corridor drawn from Mombasa to Dar es Salaam; head office Nairobi |
+| 4 | 0:56 | One entry | The shipment card fills itself; three lines run to quote, tracking, documents |
+| 5 | 1:08 | The ladder | Bars build with real figures; landed cost lands; margin and floor markers |
+| 6 | 1:31 | The model | The answer types itself; the panel names the model that served it |
+| 7 | 1:45 | The document and the proof | The quotation, tracking segments, compliance ticks, the refusal line |
+| 8 | 2:03 | Without signal | Status flips to offline, writes queue, the counter drains on reconnect |
+| 9 | 2:14 | The ask | Support in money beside support in kind; the contact block |
+
+**Verified for the animated cut:** 165.78 s by `ffprobe`; −16.0 LUFS integrated and −2.0 dBTP true
+peak; the finished audio transcribed and matched to the film (2,038,543 · 30% · 15% · 14 days ·
+SADC · the mailbox all present). The presenter panel holds a still portrait — her lips do not move,
+because that needs a face-reenactment model (about USD 0.70–3.00 a minute, on an account not funded
+here) — and the film says so rather than showing a synthetic mouth.
+
+## The screen-capture cut, scene by scene
 
 | # | Time | Screen | What the narration claims | Where it is proved |
 |---|---|---|---|---|
