@@ -117,6 +117,12 @@ def draw_title(p, f):
     f.text(130, 760, "English and Kiswahili  ·  Online and offline  ·  Nairobi", 30, "r", MUTED, alpha=ad.span(p, 0.6, 0.8))
     furniture_bar(f, "Altovex CargoLinx — demo film", ad.span(p, 0.02, 0.1))
 
+AMANDA_AVATAR = Path("/home/amanda/out/4k/amanda-monogram-4k.png")
+try:
+    _am_avatar = Image.open(AMANDA_AVATAR).convert("RGB") if AMANDA_AVATAR.exists() else None
+except Exception:
+    _am_avatar = None
+
 def _team_cards(f, p, allan_alpha, amanda_alpha):
     f.text(120, 110, "THE TEAM", 30, "sb", GOLD, alpha=min(1, p * 5))
     # left card: Allan photo
@@ -131,10 +137,14 @@ def _team_cards(f, p, allan_alpha, amanda_alpha):
     f.d.rectangle([120, 760, 550, 900], fill=(255, 255, 255))
     f.text(150, 775, "Allan Sande", 40, "b", NAVY, alpha=allan_alpha)
     f.text(150, 825, "Founder & CTO, Altovex", 28, "r", (60, 80, 110), alpha=allan_alpha)
-    # right card: Amanda = labelled AI card, NO face
+    # right card: Amanda = gold monogram avatar + labelled AI persona, NO human face
     f.d.rounded_rectangle([700, 220, 1800, 760], radius=18, fill=(20, 52, 92), outline=GOLD, width=4)
-    f.text(760, 280, "AMANDA", 90, "b", WHITE, alpha=min(1, amanda_alpha * 4))
-    f.text(760, 390, "AI orchestrator — not a person, no actor face.", 32, "r", GOLD, alpha=amanda_alpha)
+    if _am_avatar is not None:
+        av = _am_avatar.resize((220, 220), Image.LANCZOS)
+        f.im.paste(av, (760, 270))
+        f.d.rectangle([760, 270, 980, 490], outline=GOLD, width=3)
+    f.text(1020, 280, "AMANDA", 90, "b", WHITE, alpha=min(1, amanda_alpha * 4))
+    f.text(1020, 390, "AI persona — AI-generated avatar, not a person.", 32, "r", GOLD, alpha=amanda_alpha)
     acts = ["Answers trade questions in seconds", "English + Kiswahili voice", "Reads engine figures, never invents prices"]
     for i, s in enumerate(acts):
         f.text(760, 470 + i * 70, ">  " + s, 34, "r", WHITE, alpha=amanda_alpha)
