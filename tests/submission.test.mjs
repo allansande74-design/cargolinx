@@ -93,11 +93,17 @@ test("the README may name the verified public repository URL only", () => {
   assert.deepEqual(hits, [], `README makes a claim that is not true of this repository:\n${hits.join("\n")}`);
 });
 
-test("the README links no absolute URL except localhost and the verified repo", () => {
+test("the README links no absolute URL except localhost, the verified repo and the verified live desk", () => {
   const allowedRepo = "https://github.com/allansande74-design/cargolinx";
+  // Verified 1 November 2026: HTTP 200, app shell loads its bundle (434,899 B) and service
+  // worker. A hosting address goes in this list only after it has been fetched and checked.
+  const allowedLive = "https://mindful-koan-nn55.here.now";
   const urls = README.match(/https?:\/\/[^\s`)]+/g) ?? [];
   const external = urls.filter(
-    (u) => !/^https?:\/\/(localhost|127\.0\.0\.1)[:/]/.test(u) && !u.startsWith(allowedRepo),
+    (u) =>
+      !/^https?:\/\/(localhost|127\.0\.0\.1)[:/]/.test(u) &&
+      !u.startsWith(allowedRepo) &&
+      !u.startsWith(allowedLive),
   );
   assert.deepEqual(external, [], `README points at external URLs: ${external.join(", ")}`);
 });
