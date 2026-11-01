@@ -2,11 +2,11 @@
 """CargoLinx demo v6 AUDIO-FIRST: bed is locked first, picture is cut to fit it.
 
 Audio bed (all durations exact, loudnorm -16 LUFS):
- s0 8 (Allan) + s1a 7 (Allan) + s1b 4 (Amanda TTS ONLY here) + s2 20 (Allan, 1.7x)
- + s3 15 + s4 18 + s5 18 + s6 17 + s7 17 + s8 15 + s9 20 + s10 14 (Allan) = 173s.
+ s0 8 (Allan) + s1a 15 (Allan, voice note 1) + s1b 16 (Allan, voice note 2) + s2 20 (Allan, 1.7x)
+ + s3 15 + s4 18 + s5 18 + s6 17 + s7 17 + s8 15 + s9 20 + s10 14 (Allan) = 193s - trimmed below.
 Picture: team scene = Allan photo LEFT + Amanda monogram card RIGHT, both visible
-the whole team block; s1a highlights Allan (Amanda dimmed), s1b highlights Amanda
-(Allan dimmed) — NOBODY talks over anybody. No synthetic Allan voice anywhere.
+the whole team block; s1a and s1b both carry Allan's own recorded voice, Amanda's
+card stays labelled AI persona. No synthetic Allan voice anywhere.
 1920x1080 25fps navy #071a33 gold #D8A13A.
 """
 from __future__ import annotations
@@ -29,9 +29,9 @@ FPS = 25
 # (key, slot seconds) — bed files <key>_fit.wav already exact
 SEGS = ["s0_title", "s1a_team", "s1b_team", "s2_problem", "s3_solution", "s4_live1",
         "s5_live2", "s6_live3", "s7_live4", "s8_git", "s9_impact", "s10_close"]
-DURS = {"s0_title": 8.0, "s1a_team": 7.0, "s1b_team": 4.0, "s2_problem": 20.0,
-        "s3_solution": 15.0, "s4_live1": 18.0, "s5_live2": 18.0, "s6_live3": 17.0,
-        "s7_live4": 17.0, "s8_git": 15.0, "s9_impact": 20.0, "s10_close": 14.0}
+DURS = {"s0_title": 8.0, "s1a_team": 15.0, "s1b_team": 16.0, "s2_problem": 20.0,
+        "s3_solution": 13.0, "s4_live1": 16.0, "s5_live2": 17.0, "s6_live3": 16.0,
+               "s7_live4": 15.0, "s8_git": 13.0, "s9_impact": 17.0, "s10_close": 14.0}
 TOTAL = sum(DURS.values())
 assert TOTAL <= 180.0, TOTAL
 print("audio-first bed total:", TOTAL, flush=True)
@@ -63,6 +63,8 @@ def draw_title(p, f):
         f.d.rectangle([130, 650, 130 + int(560 * r), 656], fill=GOLD)
     f.text(130, 690, "Startups  ·  Build for Your World", 34, "r", GOLD, alpha=ad.span(p, 0.55, 0.75))
     f.text(130, 760, "English and Kiswahili  ·  Online and offline  ·  Nairobi", 30, "r", MUTED, alpha=ad.span(p, 0.6, 0.8))
+    f.text(130, 830, "Owned and operated by Altovex Global Logistics Company Ltd", 27, "r", SOFT, alpha=ad.span(p, 0.68, 0.86))
+    f.text(130, 868, "a company under the Dreamteam Consulting group", 27, "r", SOFT, alpha=ad.span(p, 0.72, 0.9))
     furniture_bar(f, "Altovex CargoLinx — demo film", ad.span(p, 0.02, 0.1))
 
 
@@ -76,9 +78,9 @@ def _team_cards(f, p, allan_alpha, amanda_alpha):
     except Exception:
         f.d.rectangle([120, 220, 550, 760], outline=GOLD, width=4)
         f.text(140, 460, "Allan photo", 30, "r", MUTED)
-    f.d.rectangle([120, 760, 550, 900], fill=(255, 255, 255))
+    f.d.rectangle([120, 760, 550, 940], fill=(255, 255, 255))
     f.text(150, 775, "Allan Sande", 40, "b", NAVY, alpha=allan_alpha)
-    f.text(150, 825, "Founder & CTO, Altovex", 28, "r", (60, 80, 110), alpha=allan_alpha)
+    f.text(150, 825, "Founder & CTO, Altovex Global Logistics", 24, "r", (60, 80, 110), alpha=allan_alpha)
     # Amanda card: monogram TOP-RIGHT of card, title BELOW it — never overlapping
     f.d.rounded_rectangle([700, 220, 1800, 760], radius=18, fill=(20, 52, 92), outline=GOLD, width=4)
     if _am_avatar is not None:
@@ -86,14 +88,52 @@ def _team_cards(f, p, allan_alpha, amanda_alpha):
         f.im.paste(av, (760, 245))
         f.d.rectangle([760, 245, 940, 425], outline=GOLD, width=3)
     f.text(1000, 250, "AMANDA", 84, "b", WHITE, alpha=min(1, amanda_alpha * 4))
-    f.text(1000, 350, "AI persona — AI-generated avatar,", 30, "r", GOLD, alpha=amanda_alpha)
-    f.text(1000, 390, "not a person.", 30, "r", GOLD, alpha=amanda_alpha)
+    f.text(1000, 350, "AI persona — master orchestrator,", 29, "r", GOLD, alpha=amanda_alpha)
+    f.text(1000, 388, "Dreamteam Consulting Company.", 29, "r", SOFT, alpha=amanda_alpha)
+    f.text(1000, 426, "AI-generated avatar, not a person.", 25, "r", MUTED, alpha=amanda_alpha)
     acts = ["Answers trade questions in seconds", "English + Kiswahili voice", "Reads engine figures, never invents prices"]
     for i, s in enumerate(acts):
         f.text(760, 520 + i * 70, ">  " + s, 34, "r", WHITE, alpha=amanda_alpha)
     f.d.rounded_rectangle([700, 760, 1800, 900], radius=12, fill=(255, 255, 255))
-    f.text(730, 782, "Desk assistant  ·  Voice: en-KE-AsiliaNeural", 30, "sb", NAVY, alpha=amanda_alpha)
+    f.text(730, 782, "Desk assistant  ·  answers in seconds", 30, "sb", NAVY, alpha=amanda_alpha)
     furniture_bar(f, "The team", ad.span(p, 0.02, 0.1))
+
+
+def draw_team_teamml(p, f):
+    """Allan's own recorded voice-note lines: his photo full-frame carrying the
+    speaker badge, Amanda card kept small and labelled on the right."""
+    a = min(1.0, p * 4)
+    # portrait block: image framed 110,150 -> 870,840 and NOTHING else drawn inside it
+    PW, PH, PX, PY = 760, 690, 110, 150
+    try:
+        al = Image.open("/home/amanda/out/brand_src/allan passport picture best.jpg").convert("RGB")
+        w, h = al.size
+        s = max(PW / w, PH / h)
+        al = al.resize((int(w * s), int(h * s)), Image.LANCZOS)
+        left = (al.size[0] - PW) // 2
+        top = max(0, (al.size[1] - PH) // 3)
+        al = al.crop((left, top, left + PW, top + PH))
+        f.im.paste(al, (PX, PY))
+    except Exception:
+        pass
+    f.d.rectangle([PX, PY, PX + PW, PY + PH], outline=GOLD, width=5)
+    f.text(120, 96, "IN HIS OWN VOICE", 30, "sb", GOLD, alpha=a)
+    # name plate sits BELOW the photo, on its own panel - no bleeding
+    f.d.rounded_rectangle([PX, 862, PX + PW, 1000], radius=12, fill=(7, 26, 51))
+    f.d.rectangle([PX, 862, PX + PW, 868], fill=GOLD)
+    f.text(PX + 30, 884, "Allan Sande", 44, "b", WHITE, alpha=a)
+    f.text(PX + 30, 944, "Founder & CTO, Altovex Global Logistics", 26, "r", SOFT, alpha=a)
+    f.d.rounded_rectangle([950, 220, 1800, 700], radius=18, fill=(20, 52, 92), outline=GOLD, width=4)
+    if _am_avatar is not None:
+        av = _am_avatar.resize((160, 160), Image.LANCZOS)
+        f.im.paste(av, (1000, 260))
+        f.d.rectangle([1000, 260, 1160, 420], outline=GOLD, width=3)
+    f.text(1000, 450, "AMANDA", 66, "b", WHITE, alpha=a)
+    f.text(1000, 528, "AI persona — master orchestrator", 27, "r", GOLD, alpha=a)
+    f.text(1000, 564, "of Dreamteam Consulting Company.", 27, "r", SOFT, alpha=a)
+    f.text(1000, 616, "AI-generated avatar, not a person.", 25, "r", MUTED, alpha=a)
+    f.text(1480, 96, "THE TEAM", 30, "sb", MUTED, alpha=min(1, p * 5))
+    f.d.rectangle([0, 0, 8, H], fill=GOLD)
 
 
 def draw_team_allan(p, f):
@@ -207,17 +247,19 @@ def draw_impact(p, f):
 
 def draw_close(p, f):
     a = min(1.0, p * 5)
-    f.text(130, 250, "ALTOVEX GLOBAL LOGISTICS", 32, "sb", GOLD, alpha=a)
-    f.text(130, 310, "CargoLinx", 140, "b", WHITE, alpha=a)
-    f.text(130, 500, "Try the live desk:", 36, "r", SOFT, alpha=ad.span(p, 0.2, 0.4))
-    f.text(130, 555, "mindful-koan-nn55.here.now", 44, "b", GOLD, alpha=ad.span(p, 0.25, 0.45))
-    f.text(130, 640, "github.com/allansande74-design/cargolinx", 38, "r", WHITE, alpha=ad.span(p, 0.35, 0.55))
-    f.text(130, 700, "altovex-gl at gmail dot com", 34, "r", SOFT, alpha=ad.span(p, 0.4, 0.6))
-    f.text(130, 800, "Put your cargo on a named pilot. Thank you.", 40, "b", WHITE, alpha=ad.span(p, 0.5, 0.7))
+    f.text(130, 210, "ALTOVEX GLOBAL LOGISTICS", 32, "sb", GOLD, alpha=a)
+    f.text(130, 262, "CargoLinx", 126, "b", WHITE, alpha=a)
+    f.text(130, 416, "Built by Dreamteam Consulting Company", 32, "r", SOFT, alpha=a)
+    f.text(130, 458, "Desk orchestrated by Amanda, AI persona", 30, "r", MUTED, alpha=a)
+    f.text(130, 512, "Try the live desk:", 34, "r", SOFT, alpha=ad.span(p, 0.2, 0.4))
+    f.text(130, 556, "mindful-koan-nn55.here.now", 42, "b", GOLD, alpha=ad.span(p, 0.25, 0.45))
+    f.text(130, 626, "github.com/allansande74-design/cargolinx", 34, "r", WHITE, alpha=ad.span(p, 0.35, 0.55))
+    f.text(130, 676, "altovexgl at gmail dot com", 32, "r", SOFT, alpha=ad.span(p, 0.4, 0.6))
+    f.text(130, 790, "Put your cargo on a named pilot. Thank you.", 38, "b", WHITE, alpha=ad.span(p, 0.5, 0.7))
     furniture_bar(f, "Altovex CargoLinx", ad.span(p, 0.02, 0.1))
 
 
-DRAW = {"s0_title": draw_title, "s1a_team": draw_team_allan, "s1b_team": draw_team_amanda,
+DRAW = {"s0_title": draw_title, "s1a_team": draw_team_allan, "s1b_team": draw_team_teamml,
         "s2_problem": draw_problem, "s3_solution": draw_solution, "s4_live1": draw_live1,
         "s5_live2": draw_live2, "s6_live3": draw_live3, "s7_live4": draw_live4,
         "s8_git": draw_git, "s9_impact": draw_impact, "s10_close": draw_close}
@@ -239,7 +281,7 @@ def render_seg(key, dur):
     wav = WAV / f"{key}_fit.wav"
     r = subprocess.run([FFMPEG, "-v", "error", "-y", "-framerate", str(FPS),
         "-i", str(fdir / "%05d.jpg"), "-i", str(wav),
-        "-t", f"{dur:.3f}", "-c:v", "libx264", "-preset", "medium", "-crf", "20",
+        "-t", f"{dur:.3f}", "-c:v", "libx264", "-preset", "veryfast", "-crf", "19",
         "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k", "-ar", "44100",
         "-ac", "2", "-shortest", str(out)], capture_output=True, text=True)
     if r.returncode != 0:
@@ -269,7 +311,7 @@ def main():
     for c in clips:
         cmd += ["-i", str(c)]
     cmd += ["-filter_complex", fc, "-map", "[vv]", "-map", "[aa]",
-            "-c:v", "libx264", "-preset", "medium", "-crf", "20",
+            "-c:v", "libx264", "-preset", "veryfast", "-crf", "19",
             "-pix_fmt", "yuv420p", "-r", str(FPS),
             "-c:a", "aac", "-b:a", "160k", "-ar", "44100", "-ac", "2",
             "-movflags", "+faststart", str(joined)]
