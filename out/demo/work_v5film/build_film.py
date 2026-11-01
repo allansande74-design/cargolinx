@@ -63,14 +63,15 @@ DURS = {r["key"]: r["slot"] for r in SLOTS}
 TOTAL = sum(DURS.values())
 assert TOTAL <= 180.0, TOTAL
 
+# hashes read off the published repo (origin main) after the CI strip, 1 Nov
 GIT_LINES = [
-    ("df45d2d", "demo: v11 - instruction recording removed from the cut"),
-    ("5af11b3", "demo: v10 - portrait plate below frame, Amanda labelled"),
-    ("b35f149", "demo: v6 audio-first rebuild, real-voice bed"),
-    ("710b780", "v5 truth-fix - labels on every generated frame"),
-    ("6928836", "lane-c: matchmaking engine (11 tests)"),
-    ("cff1958", "lane-a: status report, QR live, QA 100 PASS"),
-    ("4c6a528", "demo+qr: cuts, QR pair, proof gates"),
+    ("271ddb9", "repo: only the two submission cuts stay tracked"),
+    ("aeb4836", "repo: build intermediates out of the tree"),
+    ("822c972", "demo: v5 film - 15 scenes, 153.84 s"),
+    ("3a65d5c", "demo: v11 - his own narrator lines, no bleed"),
+    ("7442083", "build: bed slot table corrected"),
+    ("623ccc4", "demo: v10 - name plate below the portrait"),
+    ("8674fbd", "demo: v6 audio-first rebuild, real-voice bed"),
 ]
 
 LADDER = [
@@ -409,7 +410,7 @@ def s13(p, f):
         a = span(p, 0.15 + i * 0.07, 0.3 + i * 0.07)
         f.text(100, 334 + i * 62, h, 22, "sb", (150, 200, 255), alpha=a)
         f.text(230, 334 + i * 62, s, 22, "r", SOFT, alpha=a)
-    f.text(100, 748, "... 46 commits in the window", 20, "r", MUTED, alpha=span(p, 0.7, 0.85))
+    f.text(100, 748, "... 48 commits in the window", 20, "r", MUTED, alpha=span(p, 0.7, 0.85))
     f.text(1230, 300, "Code", 26, "sb", GOLD, alpha=span(p, 0.4, 0.6))
     f.text(1230, 340, "github.com/allansande74-", 24, "r", WHITE, alpha=span(p, 0.45, 0.65))
     f.text(1230, 376, "design/cargolinx", 24, "r", WHITE, alpha=span(p, 0.45, 0.65))
