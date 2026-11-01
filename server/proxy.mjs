@@ -14,7 +14,7 @@
  * Run:  node server/proxy.mjs [--port 8787]
  */
 import { createServer } from "node:http";
-import { execFile } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import { readFileSync, appendFileSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, resolve, join, basename } from "node:path";
@@ -333,7 +333,13 @@ const server = createServer(async (req, res) => {
     let asrServed = null;
     if (META_KEY) {
       try {
-        const wav = Buffer.from(body.audio_b64, "base64");
+        // Meta transcriber requires mono s16le @16/24kHz: normalise client audio first (ffmpeg).
+        const FFMPEG = "/home/amanda/.hermes/tools/ffmpeg-9.0.1-linux-x64/bin/ffmpeg";
+        let wav = Buffer.from(body.audio_b64, "base64");
+        try {
+          wav = execFileSync(FFMPEG, ["-v", "error", "-i", "pipe:0", "-ar", "16000", "-ac", "1",
+            "-sample_fmt", "s16", "-f", "wav", "pipe:1"], { input: wav, maxBuffer: 256 * 1024 * 1024 });
+        } catch { /* fall through with the original bytes */ }
         const bnd = "----clx" + Date.now().toString(36);
         const head = Buffer.from(`--${bnd}\r\nContent-Disposition: form-data; name="request"\r\nContent-Type: application/json\r\n\r\n${JSON.stringify({ model: "muse-voice-transcribe-1.0", audioEncoding: "WAV", mode: "PUSH_TO_TALK" })}\r\n--${bnd}\r\nContent-Disposition: form-data; name="audio"; filename="note.wav"\r\nContent-Type: audio/wav\r\n\r\n`);
         const tail = Buffer.from(`\r\n--${bnd}--\r\n`);
