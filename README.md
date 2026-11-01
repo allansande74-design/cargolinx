@@ -1,3 +1,9 @@
+## Live and demo
+
+- **Live desk:** https://mindful-koan-nn55.here.now
+- **Demo film (2 min 33.8 s, inside the 3-minute cap):** `out/demo/cargolinx-demo-v5-film.mp4`
+- **Commit window:** 27 October to 4 November 2026, full log in `git log --since=2026-10-27`
+
 # CargoLinx v2 — offline freight desk for East African corridors
 
 Built for the Meta Global AI Developer Hackathon, October–November 2026, by Altovex Global
