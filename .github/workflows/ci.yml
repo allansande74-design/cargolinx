@@ -1,0 +1,26 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Unit and contract tests
+        run: npm test
+      - name: Production build
+        run: npm run build
+      - name: Check the manifest and service worker were produced
+        run: |
+          test -f dist/manifest.webmanifest
+          test -f dist/sw.js
+          node -e "const m=require('./dist/manifest.webmanifest'); if(!m.icons||m.icons.length<2) process.exit(1); console.log('manifest ok:', m.name, m.icons.length, 'icons')"
