@@ -1,0 +1,122 @@
+[
+  {
+    "key": "01_title",
+    "slot": 7.53,
+    "speech": 5.76,
+    "tempo": 1.0,
+    "fitted": 7.53,
+    "ok": true
+  },
+  {
+    "key": "02_team",
+    "slot": 13.81,
+    "speech": 12.27,
+    "tempo": 1.0,
+    "fitted": 13.81,
+    "ok": true
+  },
+  {
+    "key": "03_loading",
+    "slot": 14.78,
+    "speech": 13.16,
+    "tempo": 1.0,
+    "fitted": 14.78,
+    "ok": true
+  },
+  {
+    "key": "04_transit",
+    "slot": 12.46,
+    "speech": 11.07,
+    "tempo": 1.0,
+    "fitted": 12.46,
+    "ok": true
+  },
+  {
+    "key": "05_border",
+    "slot": 12.53,
+    "speech": 9.49,
+    "tempo": 1.0,
+    "fitted": 12.53,
+    "ok": true
+  },
+  {
+    "key": "06_beforeafter",
+    "slot": 9.5,
+    "speech": 8.65,
+    "tempo": 1.0,
+    "fitted": 9.5,
+    "ok": true
+  },
+  {
+    "key": "07_solution",
+    "slot": 9.35,
+    "speech": 7.59,
+    "tempo": 1.0,
+    "fitted": 9.35,
+    "ok": true
+  },
+  {
+    "key": "08_voice",
+    "slot": 11.51,
+    "speech": 10.23,
+    "tempo": 1.0,
+    "fitted": 11.51,
+    "ok": true
+  },
+  {
+    "key": "09_sam",
+    "slot": 10.61,
+    "speech": 7.72,
+    "tempo": 1.0,
+    "fitted": 10.61,
+    "ok": true
+  },
+  {
+    "key": "10_spark",
+    "slot": 12.37,
+    "speech": 9.64,
+    "tempo": 1.0,
+    "fitted": 12.37,
+    "ok": true
+  },
+  {
+    "key": "11_image",
+    "slot": 4.5,
+    "speech": 2.43,
+    "tempo": 1.0,
+    "fitted": 4.5,
+    "ok": true
+  },
+  {
+    "key": "12_offline",
+    "slot": 4.95,
+    "speech": 4.13,
+    "tempo": 1.0,
+    "fitted": 4.95,
+    "ok": true
+  },
+  {
+    "key": "13_git",
+    "slot": 10.59,
+    "speech": 7.66,
+    "tempo": 1.0,
+    "fitted": 10.59,
+    "ok": true
+  },
+  {
+    "key": "14_impact",
+    "slot": 12.18,
+    "speech": 9.96,
+    "tempo": 1.0,
+    "fitted": 12.18,
+    "ok": true
+  },
+  {
+    "key": "15_close",
+    "slot": 7.17,
+    "speech": 4.31,
+    "tempo": 1.0,
+    "fitted": 7.17,
+    "ok": true
+  }
+]
