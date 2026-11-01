@@ -140,14 +140,14 @@ def _team_cards(f, p, allan_alpha, amanda_alpha):
     # right card: Amanda = gold monogram avatar + labelled AI persona, NO human face
     f.d.rounded_rectangle([700, 220, 1800, 760], radius=18, fill=(20, 52, 92), outline=GOLD, width=4)
     if _am_avatar is not None:
-        av = _am_avatar.resize((220, 220), Image.LANCZOS)
-        f.im.paste(av, (760, 270))
-        f.d.rectangle([760, 270, 980, 490], outline=GOLD, width=3)
-    f.text(1020, 280, "AMANDA", 90, "b", WHITE, alpha=min(1, amanda_alpha * 4))
-    f.text(1020, 390, "AI persona — AI-generated avatar, not a person.", 32, "r", GOLD, alpha=amanda_alpha)
+        av = _am_avatar.resize((200, 200), Image.LANCZOS)
+        f.im.paste(av, (760, 245))
+        f.d.rectangle([760, 245, 960, 445], outline=GOLD, width=3)
+    f.text(1000, 255, "AMANDA", 90, "b", WHITE, alpha=min(1, amanda_alpha * 4))
+    f.text(1000, 365, "AI persona — AI-generated avatar, not a person.", 32, "r", GOLD, alpha=amanda_alpha)
     acts = ["Answers trade questions in seconds", "English + Kiswahili voice", "Reads engine figures, never invents prices"]
     for i, s in enumerate(acts):
-        f.text(760, 470 + i * 70, ">  " + s, 34, "r", WHITE, alpha=amanda_alpha)
+        f.text(760, 520 + i * 70, ">  " + s, 34, "r", WHITE, alpha=amanda_alpha)
     f.d.rounded_rectangle([700, 760, 1800, 900], radius=12, fill=(255, 255, 255))
     f.text(730, 782, "Desk assistant  ·  Voice: en-KE-AsiliaNeural", 30, "sb", NAVY, alpha=amanda_alpha)
     furniture_bar(f, "The team", ad.span(p, 0.02, 0.1))
