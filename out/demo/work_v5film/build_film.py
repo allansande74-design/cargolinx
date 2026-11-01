@@ -363,7 +363,7 @@ def s10(p, f):
         f.text(1108, y + 4, val, 24, "sb", WHITE, anchor="ra", alpha=a)
     f.d.line([(72, 292 + len(LADDER) * 52 - 6), (1130, 292 + len(LADDER) * 52 - 6)], fill=GOLD, width=2)
     f.text(92, 292 + len(LADDER) * 52 + 8, "Landed before VAT", 26, "sb", WHITE, alpha=span(p, 0.75, 0.9))
-    f.text(1108, 292 + len(LADDER) * 52 + 8, "KES 2,038,543.70", 26, "sb", GOLD, anchor="ra",
+    f.text(1108, 292 + len(LADDER) * 52 + 8, "KES 1,921,543.70", 26, "sb", GOLD, anchor="ra",
            alpha=span(p, 0.75, 0.9))
     f.text(1170, 300, "Then it explains the quote", 28, "sb", WHITE, alpha=span(p, 0.6, 0.78))
     f.text(1170, 344, "in plain English the buyer", 28, "r", SOFT, alpha=span(p, 0.64, 0.82))
@@ -380,7 +380,7 @@ def s11(p, f):
     f.text(72, 220, "Muse Image draws the quote card.", 54, "b", WHITE, alpha=span(p, 0.02, 0.2))
     if IMG_PROOF.exists():
         card_shot(f, IMG_PROOF, 760, 300, 1088, 508, alpha=span(p, 0.1, 0.4))
-    f.text(72, 340, "KES 2,912,205.29", 58, "b", GOLD, alpha=span(p, 0.2, 0.45))
+    f.text(72, 340, "KES 3,184,272.42", 58, "b", GOLD, alpha=span(p, 0.2, 0.45))
     f.text(72, 420, "at 30% margin", 30, "r", SOFT, alpha=span(p, 0.3, 0.5))
     f.text(72, 520, "AI-generated · made live", 22, "r", MUTED, alpha=span(p, 0.4, 0.6))
 
