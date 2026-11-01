@@ -24,3 +24,8 @@ out/demo/work_*/probe/
 out/demo/qa5film/
 out/demo/qa_*.png
 *.wav
+
+# only the two submission cuts stay in the repo
+out/demo/*.mp4
+!out/demo/cargolinx-demo-v5-film.mp4
+!out/demo/cargolinx-demo-v11-final.mp4
