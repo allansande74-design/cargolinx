@@ -41,8 +41,8 @@ SEGS = [
  ("s2_problem", 18.0, "Every shipment breaks in three places. Loading and quoting: a two-day wait, duty guessed, four people retyping. In transit: no live position, the customer chasing news, demurrage leaking. At the border: a missed levy, and a buyer who doubts the number."),
  ("s3_solution", 15.0, "CargoLinx is the offline freight desk. One record in, and the quote, the tracking and the documents all read from it. Landed cost before value added tax, a thirty percent margin held, and a fifteen percent floor stated, never negotiated away."),
  ("s4_live1", 18.0, "This is the live desk, filmed from the running build. The quote card prices a twenty foot box of solar panels, Mombasa to Kampala, inside the policy band. Now watch the voice path: a spoken instruction becomes text on screen, transcribed by Muse Voice Transcribe, live over a direct call."),
- ("s5_live2", 18.0, "Next, the camera. A yard photo goes in, and SAM three point one returns real box and mask geometry around each container: you saw the proof file. No mock overlay. These coordinates came back from a live Meta call on the thirty first of October."),
- ("s6_live3", 17.0, "Ask it to explain, and Muse Spark one point three answers in plain English from the engine's own figures. Then Muse Image one point zero draws the buyer quote card: a real four hundred kilobyte proof image, generated live, not a stock photo."),
+ ("s5_live2", 18.0, "Next, the camera demo. An illustration goes in, and the vision model returns box and mask shapes around each container in it. This shows the live call shape only, not a real yard. Those coordinates came back from a live call on the thirty first of October."),
+ ("s6_live3", 17.0, "Ask it to explain, and Muse Spark one point three answers in plain English from the engine's own figures. Then Muse Image one point zero draws a buyer card illustration: AI-generated, made live, not a shipment photo."),
  ("s7_live4", 17.0, "Kill the network and the desk keeps pricing. Writes queue on the device with an idempotency key and drain on reconnect, without a second row. Fourteen desk modules, one ledger, zero servers needed to price."),
  ("s8_git", 15.0, "The work is dated, not claimed. Twenty eight commits, twenty seventh of October to fourth of November: offline desk, duty engine, Meta model layer, PWA shell, matchmaking, these demo cuts. Three hundred fifty two tests green."),
  ("s9_impact", 20.0, "The impact is measured in hours returned. A two day quote becomes thirty seconds. One record replaces four retypings. A named margin replaces a guessed one. For a trader in Kampala, a forwarder in Nairobi, a buyer in Dar es Salaam: a price they can defend, and documents that verify it."),
@@ -205,8 +205,8 @@ def draw_live2(p, f):
     shot_frame(SHOTS / "shot_live.png", "MODEL: muse-voice-transcribe-1.0 · LIVE-DIRECT 31 Oct",
                "LIVE: spoken instruction → on-screen text · sessionId returned, 1040 ms accepted", p, f)
 def draw_live3(p, f):
-    shot_frame("/home/amanda/out/evidence/meta_image_proof.png", "MODELS: sam-3.1 + muse-spark-1.3 + muse-image-1.0 · Illustrative AI-generated image",
-               "LIVE: SAM box+mask geometry · Spark explains · Image drew this proof (503 KB)", p, f)
+    shot_frame("/home/amanda/out/evidence/meta_image_proof.png", "AI-GENERATED ILLUSTRATION · muse-image-1.0 · not a shipment photo",
+               "LIVE: Image drew this illustration live · SAM geometry on illustration only", p, f)
 def draw_live4(p, f):
     shot_frame(SHOTS / "shot_hackathon_html.png", "OFFLINE TOGGLE · measured status page · desk keeps pricing",
                "LIVE: kill network → queue with idempotency key → drain on reconnect", p, f)
