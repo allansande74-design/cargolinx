@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """CargoLinx demo v6 AUDIO-FIRST: bed is locked first, picture is cut to fit it.
 
-Audio bed (all durations exact, loudnorm -16 LUFS):
- s0 8 (Allan) + s1a 15 (Allan, voice note 1) + s1b 16 (Allan, voice note 2) + s2 20 (Allan, 1.7x)
- + s3 15 + s4 18 + s5 18 + s6 17 + s7 17 + s8 15 + s9 20 + s10 14 (Allan) = 193s - trimmed below.
+Audio bed (exact, loudnorm -16 LUFS, total 180s, joined 175.6s after 0.4s crossfades):
+ s0 8 + s1a 15 + s1b 16 + s2 20 + s3 13 + s4 16 + s5 17 + s6 16 + s7 15 + s8 13 + s9 17 + s10 14.
+ s1a/s1b carry Allan's own voice note (his recorded lines, 15s + 16s, identical take cut
+ twice so the team block plays it without repeating itself mid-sentence).
 Picture: team scene = Allan photo LEFT + Amanda monogram card RIGHT, both visible
 the whole team block; s1a and s1b both carry Allan's own recorded voice, Amanda's
 card stays labelled AI persona. No synthetic Allan voice anywhere.
@@ -31,7 +32,7 @@ SEGS = ["s0_title", "s1a_team", "s1b_team", "s2_problem", "s3_solution", "s4_liv
         "s5_live2", "s6_live3", "s7_live4", "s8_git", "s9_impact", "s10_close"]
 DURS = {"s0_title": 8.0, "s1a_team": 15.0, "s1b_team": 16.0, "s2_problem": 20.0,
         "s3_solution": 13.0, "s4_live1": 16.0, "s5_live2": 17.0, "s6_live3": 16.0,
-               "s7_live4": 15.0, "s8_git": 13.0, "s9_impact": 17.0, "s10_close": 14.0}
+        "s7_live4": 15.0, "s8_git": 13.0, "s9_impact": 17.0, "s10_close": 14.0}
 TOTAL = sum(DURS.values())
 assert TOTAL <= 180.0, TOTAL
 print("audio-first bed total:", TOTAL, flush=True)
