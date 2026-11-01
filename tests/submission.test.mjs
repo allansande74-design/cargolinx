@@ -98,12 +98,14 @@ test("the README links no absolute URL except localhost, the verified repo and t
   // Verified 1 November 2026: HTTP 200, app shell loads its bundle (434,899 B) and service
   // worker. A hosting address goes in this list only after it has been fetched and checked.
   const allowedLive = "https://allansande74-design.github.io/cargolinx/";
+  const allowedDemo = "https://allansande74-design.github.io/cargolinx/demo/";
   const urls = README.match(/https?:\/\/[^\s`)]+/g) ?? [];
   const external = urls.filter(
     (u) =>
       !/^https?:\/\/(localhost|127\.0\.0\.1)[:/]/.test(u) &&
       !u.startsWith(allowedRepo) &&
-      !u.startsWith(allowedLive),
+      !u.startsWith(allowedLive) &&
+      !u.startsWith(allowedDemo),
   );
   assert.deepEqual(external, [], `README points at external URLs: ${external.join(", ")}`);
 });
