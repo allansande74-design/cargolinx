@@ -30,7 +30,7 @@ FPS = 25
 # (key, slot seconds) — bed files <key>_fit.wav already exact
 SEGS = ["s0_title", "s1a_team", "s1b_team", "s2_problem", "s3_solution", "s4_live1",
         "s5_live2", "s6_live3", "s7_live4", "s8_git", "s9_impact", "s10_close"]
-DURS = {"s0_title": 8.0, "s1a_team": 15.0, "s1b_team": 16.0, "s2_problem": 20.0,
+DURS = {"s0_title": 7.95, "s1a_team": 6.7, "s1b_team": 6.0, "s2_problem": 22.55,
         "s3_solution": 13.0, "s4_live1": 16.0, "s5_live2": 17.0, "s6_live3": 16.0,
         "s7_live4": 15.0, "s8_git": 13.0, "s9_impact": 17.0, "s10_close": 14.0}
 TOTAL = sum(DURS.values())
@@ -260,7 +260,7 @@ def draw_close(p, f):
     furniture_bar(f, "Altovex CargoLinx", ad.span(p, 0.02, 0.1))
 
 
-DRAW = {"s0_title": draw_title, "s1a_team": draw_team_allan, "s1b_team": draw_team_teamml,
+DRAW = {"s0_title": draw_title, "s1a_team": draw_team_teamml, "s1b_team": draw_team_teamml,
         "s2_problem": draw_problem, "s3_solution": draw_solution, "s4_live1": draw_live1,
         "s5_live2": draw_live2, "s6_live3": draw_live3, "s7_live4": draw_live4,
         "s8_git": draw_git, "s9_impact": draw_impact, "s10_close": draw_close}
