@@ -15,3 +15,12 @@ dist-pub/
 
 # local: read-only backup of a root-owned .git
 .git-rootowned-backup/
+
+# build intermediates — never in the submission repo
+out/demo/work_*/
+out/demo/work_*/audio/
+out/demo/work_*/frames/
+out/demo/work_*/probe/
+out/demo/qa5film/
+out/demo/qa_*.png
+*.wav
