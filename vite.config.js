@@ -2,14 +2,19 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
+// A sub-path deploy (GitHub Pages serves this repo under /cargolinx/) needs every asset and
+// manifest reference to carry the base, or the app loads a blank screen. Default stays root.
+const BASE = process.env.VITE_BASE || "/";
+
 export default defineConfig({
+  base: BASE,
   plugins: [
     react(),
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["favicon.svg", "apple-touch-icon.png", "icon-192.png", "icon-512.png"],
       manifest: {
-        id: "/",
+        id: BASE,
         name: "CargoLinx — Altovex Global Logistics",
         short_name: "CargoLinx",
         description:
@@ -19,8 +24,8 @@ export default defineConfig({
         background_color: "#071a33",
         display: "standalone",
         orientation: "portrait-primary",
-        start_url: "/",
-        scope: "/",
+        start_url: BASE,
+        scope: BASE,
         categories: ["business", "productivity"],
         icons: [
           { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
@@ -37,7 +42,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,png,jpg,woff2,webmanifest}"],
-        navigateFallback: "/index.html",
+        navigateFallback: BASE + "index.html",
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.origin.includes("supabase") || url.pathname.includes("/v1/"),
