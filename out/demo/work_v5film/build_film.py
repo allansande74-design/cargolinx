@@ -442,7 +442,7 @@ def s15(p, f):
     f.text(72, 170, "CargoLinx", 150, "b", WHITE, alpha=min(1, p * 4))
     f.text(72, 400, "Built for our world, and ready for yours.", 46, "r", SOFT, alpha=span(p, 0.08, 0.3))
     f.text(72, 500, "Live", 24, "sb", GOLD, alpha=span(p, 0.2, 0.4))
-    f.text(180, 496, "mindful-koan-nn55.here.now", 32, "b", WHITE, alpha=span(p, 0.22, 0.42))
+    f.text(180, 496, "allansande74-design.github.io/cargolinx", 28, "b", WHITE, alpha=span(p, 0.22, 0.42))
     f.text(72, 556, "Code", 24, "sb", GOLD, alpha=span(p, 0.28, 0.46))
     f.text(180, 552, "github.com/allansande74-design/cargolinx", 30, "r", SOFT, alpha=span(p, 0.3, 0.48))
     f.text(72, 640, "Seeking pilots, conformity testing and working capital", 30, "r", WHITE,

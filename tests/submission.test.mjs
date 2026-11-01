@@ -97,7 +97,7 @@ test("the README links no absolute URL except localhost, the verified repo and t
   const allowedRepo = "https://github.com/allansande74-design/cargolinx";
   // Verified 1 November 2026: HTTP 200, app shell loads its bundle (434,899 B) and service
   // worker. A hosting address goes in this list only after it has been fetched and checked.
-  const allowedLive = "https://mindful-koan-nn55.here.now";
+  const allowedLive = "https://allansande74-design.github.io/cargolinx/";
   const urls = README.match(/https?:\/\/[^\s`)]+/g) ?? [];
   const external = urls.filter(
     (u) =>

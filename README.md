@@ -1,6 +1,6 @@
 ## Live and demo
 
-- **Live desk:** https://mindful-koan-nn55.here.now
+- **Live desk:** https://allansande74-design.github.io/cargolinx/
 - **Demo film, the submission cut:** `demos/cargolinx-demo-entry-153s.mp4` (2 min 33.8 s, inside the 3-minute cap)
 - **Commit window:** 27 October to 4 November 2026, full log in `git log --since=2026-10-27`
 
