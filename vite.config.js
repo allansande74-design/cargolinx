@@ -43,6 +43,9 @@ export default defineConfig({
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,png,jpg,woff2,webmanifest}"],
         navigateFallback: BASE + "index.html",
+        // the film page lives beside the app; without this the service worker answers a
+        // navigation to /cargolinx/demo/ with the app shell and the video never appears
+        navigateFallbackDenylist: [/\/demo\//],
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.origin.includes("supabase") || url.pathname.includes("/v1/"),
