@@ -1,7 +1,8 @@
 ## Live and demo
 
 - **Live desk:** https://mindful-koan-nn55.here.now
-- **Demo film (2 min 33.8 s, inside the 3-minute cap):** `out/demo/cargolinx-demo-v5-film.mp4`
+- **Entry film — this is the submission cut:** `demos/cargolinx-demo-entry-153s.mp4` (2 min 33.8 s, inside the 3-minute cap)
+- **Earlier cut, kept for comparison only, not the entry:** `demos/cargolinx-demo-earlier-cut-159s.mp4` (2 min 39.8 s)
 - **Commit window:** 27 October to 4 November 2026, full log in `git log --since=2026-10-27`
 
 # CargoLinx v2 — offline freight desk for East African corridors
