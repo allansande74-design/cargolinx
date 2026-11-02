@@ -37,3 +37,10 @@ dist-pages/
 # only the scripts, the QA note and the final cut are committed
 out/demo/*/
 out/demo/*.png
+
+# rendered rate-card output (regenerate with tools/ddp_rate_card.py)
+rates/out/
+
+# python bytecode
+__pycache__/
+*.pyc

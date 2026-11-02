@@ -1,0 +1,159 @@
+# Altovex Global Logistics — cost basis for the consolidated DDP rate card
+#
+# EVERY rate on the client card is derived from this file. Nothing is copied from another
+# forwarder's published card. Each line carries its own source and a status:
+#   statutory   — set by law or by the tariff; cite the instrument
+#   quoted      — a signed supplier or carrier document is on file (path given)
+#   provisional — the best figure we hold today, not yet backed by a signed offer
+#
+# The generator refuses to publish a client card if any line it uses is 'provisional'
+# AND the card is marked as firm. Provisional lines render with the "subject to
+# confirmation at booking" wording instead.
+
+meta:
+  prepared: 2026-11-02
+  owner: "Allan Sande, Altovex Global Logistics Co. Ltd"
+  corridor: "China base ports → Mombasa → Nairobi / Kampala"
+  fx_kes_per_usd: 129.83
+  fx_source: "Indicative mean rate 2 Nov 2026; the invoice-date rate governs"
+  margin_target: 0.30        # on service cost only
+  margin_floor: 0.15         # policy floor; the generator refuses to publish below it
+  validity_days: 30
+  validity_until: "2 December 2026"
+  insurance_rate: 0.005      # marine cargo cover on CIF
+
+statutory:
+  duty_bands:
+    A: 0.00
+    B: 0.10
+    C: 0.25
+    D: 0.25
+    E: 0.35
+  duty_source: "EAC Common External Tariff, ad valorem tiers 0 / 10 / 25 / 35 per cent; the HS line governs"
+  idf: 0.025
+  idf_source: "Import Declaration Fee, 2.5% of CIF"
+  rdl: 0.02
+  rdl_source: "Railway Development Levy, 2% of CIF"
+  vat: 0.16
+  vat_source: "VAT Act 2013, 16% on CIF + duty + IDF + RDL"
+  vat_recoverable: "Only if the importer is VAT-registered; the card states the gross figure"
+
+sea:
+  label: "Consolidated sea freight (LCL)"
+  chargeable:
+    rule: "Greater of volume in CBM and weight in tonnes at 1,000 kg per CBM — the W/M rule"
+    min_units: 1.0
+    ratio_kg_per_cbm: 1000.0
+  per_unit:
+    - key: freight
+      label: "Ocean freight, China base port to Mombasa, consolidated"
+      value: 145.00
+      unit: "USD / CBM"
+      status: provisional
+      source: "Market band observed 2 Nov 2026; signed consolidator tariff not yet on file"
+    - key: cfs
+      label: "CFS handling, de-stuffing and receipt at origin"
+      value: 48.00
+      unit: "USD / CBM"
+      status: provisional
+      source: "Market band observed 2 Nov 2026; signed CFS tariff not yet on file"
+    - key: port
+      label: "Mombasa port and terminal charges"
+      value: 12.00
+      unit: "USD / CBM"
+      status: provisional
+      source: "Market band observed 2 Nov 2026; KPA tariff to be attached"
+    - key: inland_nairobi
+      label: "Inland haulage Mombasa to Nairobi"
+      value: 32.00
+      unit: "USD / CBM"
+      status: provisional
+      source: "Market band observed 2 Nov 2026; transporter quote to be attached"
+    - key: inland_kampala
+      label: "Inland haulage Mombasa to Kampala via Malaba"
+      value: 48.00
+      unit: "USD / CBM"
+      status: provisional
+      source: "Market band observed 2 Nov 2026; transporter quote to be attached"
+  per_shipment:
+    - key: doc
+      label: "Documentation, manifest and release"
+      value: 40.00
+      unit: "USD / shipment"
+      status: provisional
+      source: "Internal costed rate"
+    - key: clearing
+      label: "Customs clearing and agency"
+      value: 130.00
+      unit: "USD / shipment"
+      status: provisional
+      source: "Market band observed 2 Nov 2026; clearing agent quote to be attached"
+    - key: lastmile_nairobi
+      label: "Delivery to the consignee's door, Nairobi"
+      value: 30.00
+      unit: "USD / shipment"
+      status: provisional
+      source: "Internal costed rate"
+    - key: lastmile_kampala
+      label: "Delivery to the consignee's door, Kampala"
+      value: 45.00
+      unit: "USD / shipment"
+      status: provisional
+      source: "Internal costed rate"
+    - key: bond_kampala
+      label: "Uganda transit bond and border formalities"
+      value: 130.00
+      unit: "USD / shipment"
+      status: provisional
+      source: "Market band observed 2 Nov 2026; bond provider quote to be attached"
+
+air:
+  label: "Consolidated air freight"
+  chargeable:
+    rule: "Greater of actual weight and volumetric weight at L × W × H cm ÷ 6,000 (IATA divisor)"
+    divisor: 6000.0
+    min_kg: 45.0
+  per_unit:
+    - key: freight
+      label: "Air freight, China hub to Nairobi, consolidated"
+      value: 6.20
+      unit: "USD / kg"
+      status: provisional
+      source: "Market band observed 2 Nov 2026; airline or consolidator tariff not yet on file"
+    - key: fuel
+      label: "Fuel and security surcharge"
+      value: 0.60
+      unit: "USD / kg"
+      status: provisional
+      source: "Market band observed 2 Nov 2026"
+    - key: handling
+      label: "Airport handling and screening"
+      value: 0.35
+      unit: "USD / kg"
+      status: provisional
+      source: "Market band observed 2 Nov 2026"
+    - key: delivery_nairobi
+      label: "Delivery to the consignee's door, Nairobi"
+      value: 0.45
+      unit: "USD / kg"
+      status: provisional
+      source: "Internal costed rate"
+    - key: delivery_kampala
+      label: "Delivery to the consignee's door, Kampala"
+      value: 0.80
+      unit: "USD / kg"
+      status: provisional
+      source: "Internal costed rate"
+  per_shipment:
+    - key: clearing
+      label: "Customs clearing and agency"
+      value: 130.00
+      unit: "USD / shipment"
+      status: provisional
+      source: "Market band observed 2 Nov 2026; clearing agent quote to be attached"
+    - key: bond_kampala
+      label: "Uganda transit bond and border formalities"
+      value: 95.00
+      unit: "USD / shipment"
+      status: provisional
+      source: "Market band observed 2 Nov 2026; bond provider quote to be attached"
