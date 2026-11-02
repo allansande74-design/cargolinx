@@ -61,12 +61,19 @@ The model layer is narrow on purpose and every call names the model that served 
 
 ## The demo
 
-- `cargolinx-demo-165s.mp4` — 165 seconds, nine scenes, 1920×1080, narrated, captured from the
-  running build: landing, one shipment entry, the landed-cost ladder, the model explaining the
-  quote, the printed quotation, tracking, compliance, airplane mode, and the close.
-- Cut from real screens; no mock-ups and no invented figures. Scene 3's figures are the ones the
-  engine returned for the shipment in the video: landed cost before VAT KES 2,038,543.70,
-  quoted at 30% margin KES 2,912,205.29 ex-VAT.
+- **Watch:** https://allansande74-design.github.io/cargolinx/demo/ — `cargolinx-demo-entry-153s.mp4`,
+  2 min 34 s, 1920x1080, narrated, no login.
+- Every document on screen is raised by the product itself for one shipment (order CLX-261031-714):
+  the quotation from `src/lib/quote-doc.mjs`, the delivery note and packing list from
+  `src/lib/doc-templates.mjs`, rendered headless at 3x. No mock-ups and no invented figures.
+- Photographs are public domain from Wikimedia Commons, credit burned into the card: the Mombasa
+  container terminal and the cable reels used for the model scene. That scene shows the photograph
+  and the recorded call's provenance; the mask itself is in `evidence/`, not drawn over the picture.
+- The figures are the engine's: landed cost before VAT KES 2,038,543.70, quoted at 30% margin
+  KES 2,912,205.29 ex-VAT.
+- Quality measured on the delivered file, not asserted: 1080p25, -16.1 LUFS integrated, -1.5 dBTP
+  true peak, no shot held still beyond 1.28 s, and every frame read for stale wording. Reports:
+  `out/demo/FILM-QA.md` and `out/demo/FILM-CONTENT-QA.md`.
 
 ## Measured, not asserted
 
