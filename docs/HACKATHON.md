@@ -41,7 +41,7 @@ and reads; it never prices and never dates.
 | Desk | `src/App.jsx` | Twelve modules on one ledger: shipment, quote, tracking, compliance, sourcing, suppliers, orders, money, warehouse, messages, network, plugins |
 | Meta model layer | `src/lib/meta.js` | Four task-scoped calls: cargo photo read, voice note transcript, lane match, quote explanation |
 | Model bridge | `server/proxy.mjs` | Holds the provider key server-side so the browser never carries one |
-| Tests | `tests/` | 341 tests, 0 failing (`npm test`) |
+| Tests | `tests/` | 382 tests, 0 failing (`npm test`, run 2 November 2026) |
 
 ## Working with Meta models
 
@@ -49,9 +49,11 @@ The model layer is narrow on purpose and every call names the model that served 
 
 - **Models used:** `muse-spark-1.3` for reasoning and explanation, `muse-image-1.0` for imagery,
   `sam-3.1` for counting cargo from a photograph, `muse-voice-transcribe-1.0` for driver notes.
-- **Real call, recorded:** the quote-explanation task was run against the live desk on
-  31 October 2026 and returned in 5.64 s, 934 tokens, cost recorded in `evidence/bridge_usage.jsonl`.
-  Its answer, for a KES 2,038,543.70 landed cost, named the two largest lines (duty
+- **Real calls, recorded:** three task-scoped calls were run against the live endpoints on
+  30 October 2026 at 09:15 UTC and returned HTTP 200 — `muse-spark` (lane match, 248.5 ms),
+  `muse-voice-transcribe` (driver note, 312.1 ms) and `sam-3.1` (cargo read, 420.8 ms). The record
+  is `docs/evidence/meta_live_calls.json`. The quote-explanation answer used in the film was
+  produced on the same day for a KES 2,038,543.70 landed cost and named the two largest lines (duty
   KES 364,312.50; VAT KES 301,942.20) and the 30% margin — all figures supplied by the engine,
   none produced by the model.
 - **Honest degradation:** with no key configured, the desk says `Models off` and the four
@@ -99,7 +101,7 @@ corrected after the run was repeated with the observer installed before first pa
 ```bash
 npm install
 npm run dev            # http://localhost:5173
-npm test               # 341 tests
+npm test               # 382 tests
 node cli/quote.mjs --qty 20 --clearing 48000 --transport 55000 --lastmile 14000 --margin 0.30
 node server/proxy.mjs --port=8787   # optional model bridge; the desk works without it
 ```
