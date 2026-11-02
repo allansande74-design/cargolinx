@@ -23,4 +23,4 @@ jobs:
         run: |
           test -f dist/manifest.webmanifest
           test -f dist/sw.js
-          node -e "const m=require('./dist/manifest.webmanifest'); if(!m.icons||m.icons.length<2) process.exit(1); console.log('manifest ok:', m.name, m.icons.length, 'icons')"
+          node -e "const fs=require('fs'); const m=JSON.parse(fs.readFileSync('dist/manifest.webmanifest','utf8')); if(!m.icons||m.icons.length<2) process.exit(1); console.log('manifest ok:', m.name, m.icons.length, 'icons')"
