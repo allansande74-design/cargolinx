@@ -35,13 +35,14 @@ and reads; it never prices and never dates.
 | Landed cost | `engine/landed.mjs` | CIF, duty, IDF 2.5%, RDL 2%, VAT 16%, clearing, transport, last mile, PVoC |
 | Tariff and conformity | `engine/tariff.mjs` | HS table for corridor codes, EAC CET bands, PVoC fees, refusal on an unclassified code |
 | ETA | `engine/eta.mjs` | Segmented transit plan with dwell, border time and confidence |
-| Quote gate | `engine/quote.mjs` | 30–40% policy band, 15% floor, refuses a quote below the floor instead of sliding |
+| Quote gate | `engine/quote.mjs`, `engine/pricing-policy.mjs` | 30% target margin, 10% hard floor, a 5% concession that must still clear the floor, a market test against wholesale, and buying prices solved backwards from the client price |
 | Documents | `src/lib/quote-doc.mjs` | Quotation HTML with a QR that verifies the figures against the engine |
 | Offline layer | `src/lib/db.js`, `src/lib/sync.js` | IndexedDB persistence, idempotent queue, drain on reconnect |
-| Desk | `src/App.jsx` | Twelve modules on one ledger: shipment, quote, tracking, compliance, sourcing, suppliers, orders, money, warehouse, messages, network, plugins |
+| Deadlines | `engine/deadlines.mjs`, `src/Deadlines.jsx` | A clock and countdown per assignment, milestone calendar, T-7/T-3/T-1/T-0 client reports, and a delay register that only excuses a named external cause |
+| Desk | `src/App.jsx` | Thirteen modules on one ledger: shipment, quote, tracking, compliance, sourcing, suppliers, orders, money, warehouse, messages, network, plugins |
 | Meta model layer | `src/lib/meta.js` | Four task-scoped calls: cargo photo read, voice note transcript, lane match, quote explanation |
 | Model bridge | `server/proxy.mjs` | Holds the provider key server-side so the browser never carries one |
-| Tests | `tests/` | 382 tests, 0 failing (`npm test`, run 2 November 2026) |
+| Tests | `tests/` | 403 tests, 0 failing (`npm test`, run 2 November 2026) |
 
 ## Working with Meta models
 
@@ -49,10 +50,11 @@ The model layer is narrow on purpose and every call names the model that served 
 
 - **Models used:** `muse-spark-1.3` for reasoning and explanation, `muse-image-1.0` for imagery,
   `sam-3.1` for counting cargo from a photograph, `muse-voice-transcribe-1.0` for driver notes.
-- **Real calls, recorded:** three task-scoped calls were run against the live endpoints on
-  30 October 2026 at 09:15 UTC and returned HTTP 200 — `muse-spark` (lane match, 248.5 ms),
-  `muse-voice-transcribe` (driver note, 312.1 ms) and `sam-3.1` (cargo read, 420.8 ms). The record
-  is `docs/evidence/meta_live_calls.json`. The quote-explanation answer used in the film was
+- **Real calls, recorded:** 207 calls were written by the bridge between 30 October and 1 November
+  2026; 143 were served by Meta direct and 117 of those returned HTTP 200, across `muse-spark-1.3`,
+  `muse-wonder-1.0` and `muse-voice-transcribe-1.0`. Twelve representative rows are tabulated in
+  `docs/META-CALLS.md` with the model, task, status, latency and token count; full response bodies
+  with provider ids are in `docs/evidence/`. The quote-explanation answer used in the film was
   produced on the same day for a KES 2,038,543.70 landed cost and named the two largest lines (duty
   KES 364,312.50; VAT KES 301,942.20) and the 30% margin — all figures supplied by the engine,
   none produced by the model.
@@ -92,16 +94,18 @@ corrected after the run was repeated with the observer installed before first pa
   entry file and claims no filing API.
 - Telematics partners are modelled through an adapter contract tested against a fixture, not
   integrated live.
-- Direct calls to `api.meta.ai` returned `billing_not_configured` on the entrant's team during
-  the event; the working path is the same Meta model through the local gateway, and the desk
-  reports which upstream model served each answer.
+- On 2 November 2026 the direct key returns `401 invalid_api_key` on `/v1/models`; the calls above
+  were made while it worked, and the evidence is kept rather than re-run. With no key the desk says
+  `Models off` and takes the deterministic path, which is what a judge will see on a clean machine.
+- The client-side market benchmark for the bench line is a Chinese FOB range, not a Nairobi
+  wholesale price, and is labelled that way.
 
 ## Running it
 
 ```bash
 npm install
 npm run dev            # http://localhost:5173
-npm test               # 382 tests
+npm test               # 403 tests
 node cli/quote.mjs --qty 20 --clearing 48000 --transport 55000 --lastmile 14000 --margin 0.30
 node server/proxy.mjs --port=8787   # optional model bridge; the desk works without it
 ```

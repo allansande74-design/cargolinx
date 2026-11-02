@@ -4,6 +4,7 @@
  * Usage: node cli/quote.mjs --goods 1200000 --freight 250000 --duty 0.25 --margin 0.2 --qty 20
  */
 import { landedCost, quote, floorPrice } from "../engine/landed.mjs";
+import { POLICY } from "../engine/pricing-policy.mjs";
 import { resolveHS, pvocApplicable, pvocFee, FX } from "../engine/tariff.mjs";
 
 const args = process.argv.slice(2);
@@ -47,7 +48,7 @@ if (hs) {
 const lc = landedCost(input);
 const margin = num("margin", 0.2);
 const q = quote(lc, { marginPct: margin });
-const f = floorPrice(lc);
+const f = floorPrice(lc, POLICY.minMargin);
 
 const money = (n) => n.toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const pad = (s, n) => String(s).padEnd(n);
@@ -64,11 +65,12 @@ console.log(`${pad("Statutory total", 64)}${money(lc.totals.statutory).padStart(
 console.log(`${pad("Landed cost incl. VAT", 64)}${money(lc.totals.total).padStart(14)}`);
 console.log(`${pad("Landed cost excl. recoverable VAT", 64)}${money(lc.totals.netCostExVat).padStart(14)}`);
 console.log(`${pad("Cost per unit excl. VAT", 64)}${money(lc.totals.perUnit).padStart(14)}`);
-console.log(`\nQUOTE at ${(q.marginPct * 100).toFixed(1)}% margin   (policy band 30-40%, floor 15%)`);
+console.log(`\nQUOTE at ${(q.marginPct * 100).toFixed(1)}% margin   (target ${(POLICY.targetMargin*100).toFixed(0)}%, floor ${(POLICY.minMargin*100).toFixed(0)}%, concession ${(POLICY.negotiationRoom*100).toFixed(0)}%)`);
 console.log(`${pad("Selling price excl. VAT", 64)}${money(q.price).padStart(14)}`);
 console.log(`${pad("VAT on sale", 64)}${money(q.vatOnSale).padStart(14)}`);
 console.log(`${pad("Selling price incl. VAT", 64)}${money(q.priceIncVat).padStart(14)}`);
 console.log(`${pad("Gross profit", 64)}${money(q.grossProfit).padStart(14)}`);
-console.log(`${pad("Cheapest defensible price (15% floor)", 64)}${money(f.floorPrice).padStart(14)}`);
+console.log(`${pad(`Cheapest defensible price (${(POLICY.minMargin*100).toFixed(0)}% floor)`, 64)}${money(f.floorPrice).padStart(14)}`);
+console.log(`${pad(`Price after ${(POLICY.negotiationRoom*100).toFixed(0)}% concession`, 64)}${money(q.price * (1 - POLICY.negotiationRoom)).padStart(14)}`);
 if (pvocNote) console.log(pvocNote);
 console.log("");

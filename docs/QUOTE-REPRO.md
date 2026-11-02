@@ -36,7 +36,7 @@ Selling price excl. VAT                                           2,745,062.43
 VAT on sale                                                         439,209.99
 Selling price incl. VAT                                           3,184,272.42
 Gross profit                                                        823,518.73
-Cheapest defensible price (15% floor)                             2,260,639.65
+Cheapest defensible price (10% floor)                             2,265,048.56
 PVoC route A on FOB USD 9242.86: USD 265.00 = KES 34,404.95 (minimum of the schedule)
 ```
 

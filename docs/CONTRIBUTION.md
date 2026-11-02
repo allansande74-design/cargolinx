@@ -13,7 +13,7 @@ Built during the event window; every figure below is measured from this reposito
 | Dataset | 26 African markets, one verified against its sources, the rest marked draft and refused by `defineDataset` until sourced | `engine/dataset.mjs` |
 | Meta model layer | Task-scoped model calls behind a configuration gate; unconfigured tasks take a deterministic path and say so | `engine/meta/client.mjs`, `engine/meta/tasks.mjs` |
 | Offline layer | IndexedDB persistence so the trader keeps working with no signal | `src/` |
-| Verification | 382 tests, 0 failing, plus a judge simulation scoring the entry against the public rubric | `tests/` |
+| Verification | 403 tests, 0 failing, plus a judge simulation scoring the entry against the public rubric | `tests/` |
 
 ## Deliberate design decisions
 

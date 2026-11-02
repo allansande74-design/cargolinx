@@ -1,0 +1,117 @@
+{
+  "source": "bridge_usage.jsonl",
+  "generated_at": "2026-11-02T19:02:01.983Z",
+  "totals": {
+    "calls": 207,
+    "meta_direct": 143,
+    "meta_direct_ok": 117,
+    "http_200": 161
+  },
+  "window": {
+    "from": "2026-10-30T17:00:35.503Z",
+    "to": "2026-11-01T05:35:56.036Z"
+  },
+  "by_model": {
+    "muse-spark-1.3": 13,
+    "muse-voice-transcribe-1.0": 128,
+    "muse-wonder-1.0": 2
+  },
+  "representative": [
+    {
+      "ts": "2026-10-31T05:06:39.222Z",
+      "model": "muse-spark-1.3",
+      "task": "Meta Model API, direct line",
+      "status": 200,
+      "ms": 2436,
+      "tokens": 292
+    },
+    {
+      "ts": "2026-10-31T05:07:58.511Z",
+      "model": "muse-spark-1.3",
+      "task": "document intake; supplier figures reported verbatim",
+      "status": 200,
+      "ms": 13810,
+      "tokens": 2268
+    },
+    {
+      "ts": "2026-10-31T05:10:39.929Z",
+      "model": "muse-spark-1.3",
+      "task": "Meta Model API, direct line",
+      "status": 200,
+      "ms": 2568,
+      "tokens": 268
+    },
+    {
+      "ts": "2026-10-31T05:10:45.471Z",
+      "model": "muse-voice-transcribe-1.0",
+      "task": "voice note, direct transcriber",
+      "status": 200,
+      "ms": 2877,
+      "tokens": "—"
+    },
+    {
+      "ts": "2026-10-31T05:12:25.744Z",
+      "model": "muse-spark-1.3",
+      "task": "Meta Model API, direct line",
+      "status": 200,
+      "ms": 2869,
+      "tokens": 453
+    },
+    {
+      "ts": "2026-10-31T05:12:35.622Z",
+      "model": "muse-spark-1.3",
+      "task": "document intake; supplier figures reported verbatim",
+      "status": 200,
+      "ms": 9873,
+      "tokens": 1757
+    },
+    {
+      "ts": "2026-10-31T05:12:38.272Z",
+      "model": "muse-voice-transcribe-1.0",
+      "task": "voice note, direct transcriber",
+      "status": 200,
+      "ms": 2646,
+      "tokens": "—"
+    },
+    {
+      "ts": "2026-10-31T20:55:24.083Z",
+      "model": "muse-wonder-1.0",
+      "task": "Meta Model API, direct line",
+      "status": 200,
+      "ms": 1613,
+      "tokens": 82
+    },
+    {
+      "ts": "2026-10-31T20:55:31.158Z",
+      "model": "muse-wonder-1.0",
+      "task": "Meta Model API, direct line",
+      "status": 200,
+      "ms": 2248,
+      "tokens": 72
+    },
+    {
+      "ts": "2026-11-01T03:55:24.671Z",
+      "model": "muse-voice-transcribe-1.0",
+      "task": "voice note, direct transcriber",
+      "status": 200,
+      "ms": 4652,
+      "tokens": "—"
+    },
+    {
+      "ts": "2026-11-01T03:55:28.121Z",
+      "model": "muse-voice-transcribe-1.0",
+      "task": "voice note, direct transcriber",
+      "status": 200,
+      "ms": 3394,
+      "tokens": "—"
+    },
+    {
+      "ts": "2026-11-01T03:55:47.094Z",
+      "model": "muse-voice-transcribe-1.0",
+      "task": "voice note, direct transcriber",
+      "status": 200,
+      "ms": 2678,
+      "tokens": "—"
+    }
+  ]
+}

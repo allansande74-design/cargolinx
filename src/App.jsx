@@ -21,6 +21,8 @@ import { purchaseOrderHtml } from "./lib/supplier-docs.mjs";
 import { startCount, applyCount, writeOff, shrinkageReport, WRITE_OFF_REASONS } from "../engine/inventory-ops.mjs";
 import { list as listPlugins, status as pluginStatus, configure as configurePlugin, dryRun, supports as pluginSupports, get as getPlugin } from "../engine/plugins.mjs";
 import NetworkView from "./NetworkView.jsx";
+import Deadlines from "./Deadlines.jsx";
+import { POLICY, assessQuote } from "../engine/pricing-policy.mjs";
 import DashboardHub from "./dashboards/hub.jsx";
 import Landing from "./Landing.jsx";
 import Auth from "./Auth.jsx";
@@ -212,6 +214,7 @@ function Desk({ onSignOut }) {
         {tab === "quote" && <QuoteView shipment={selected} shipments={shipments} onPick={setSelectedId} onChange={refresh} model={model} />}
         {tab === "track" && <TrackView shipment={selected} shipments={shipments} onPick={setSelectedId} onChange={refresh} />}
         {tab === "compliance" && <ComplianceView shipment={selected} shipments={shipments} onPick={setSelectedId} onChange={refresh} />}
+        {tab === "deadlines" && <Deadlines />}
         {tab === "source" && <SourcingView />}
         {tab === "orders" && <OrdersView user={user} accounts={accounts} />}
         {tab === "money" && <MoneyView user={user} accounts={accounts} />}
@@ -241,6 +244,7 @@ const NAV = [
     ["quote", "Quotes & pricing", "file"],
     ["track", "Tracking & POD", "pin"],
     ["compliance", "Compliance", "shield"],
+    ["deadlines", "Deadlines", "clock"],
   ] },
   { title: "Trade", items: [
     ["source", "Sourcing", "globe"],
@@ -263,6 +267,7 @@ const PAGE = {
   new: { title: "New shipment", sub: "Capture the cargo once; the quote, documents and tracking all read from it." },
   quote: { title: "Quotes & pricing", sub: "Landed-cost ladder and customer quote, computed locally from dated statutory rates." },
   track: { title: "Tracking & proof of delivery", sub: "Status events, photos and signatures held against the shipment." },
+  deadlines: { title: "Deadlines", sub: "Every assignment on a clock: countdown to the promise, milestone calendar and the T-7 / T-3 / T-1 / T-0 client report." },
   compliance: { title: "Compliance", sub: "HS classification, EAC origin, PVoC and waivers checked before the border." },
   source: { title: "Sourcing", sub: "Supplier offers compared on landed cost per unit, not on sticker price." },
   suppliers: { title: "Suppliers", sub: "Records, verification and scoring for the parties you buy from." },
@@ -278,6 +283,7 @@ const PAGE = {
 };
 
 const ICONS = {
+  clock: <><circle cx="12" cy="12" r="8.6" /><path d="M12 7.4V12l3.4 2" /></>,
   plus: <><path d="M12 5v14M5 12h14" /></>,
   file: <><path d="M14 3v5h5" /><path d="M19 8.5V21H5V3h9l5 5.5Z" /><path d="M8.5 13h7M8.5 16.5h4.5" /></>,
   pin: <><path d="M12 21s7-6.1 7-11a7 7 0 1 0-14 0c0 4.9 7 11 7 11Z" /><circle cx="12" cy="10" r="2.6" /></>,
@@ -759,15 +765,18 @@ function QuoteView({ shipment, shipments, onPick, onChange, model }) {
       }),
     [shipment]
   );
-  const floor = floorPrice(lc);
+  const floor = floorPrice(lc, POLICY.minMargin);
   const margin = shipment.marginPct ?? 0.3;
   let q = null;
   let quoteError = "";
   try {
-    q = quote(lc, { marginPct: margin });
+    q = quote(lc, { marginPct: margin, minMarginPct: POLICY.minMargin, targetMinPct: POLICY.targetMargin });
   } catch (e) {
     quoteError = e.message;
   }
+  const policyCheck = q
+    ? assessQuote({ costExVat: lc.totals.netCostExVat, price: q.price })
+    : { concessionPrice: 0, marginAfterConcessionPct: 0 };
 
   async function setMargin(m) {
     await saveShipment({ ...shipment, marginPct: m });
@@ -816,7 +825,8 @@ function QuoteView({ shipment, shipments, onPick, onChange, model }) {
           <div><span>Landed cost excl. VAT</span><strong><Money value={lc.totals.netCostExVat} ccy={lc.currency} /></strong></div>
           <div><span>Statutory</span><strong><Money value={lc.totals.statutory} ccy={lc.currency} /></strong></div>
           <div><span>Cost per unit</span><strong><Money value={lc.totals.perUnit} ccy={lc.currency} /></strong></div>
-          <div><span>Floor price (15%)</span><strong><Money value={floor.floorPrice} ccy={lc.currency} /></strong></div>
+          <div><span>Floor price (10%)</span><strong><Money value={floor.floorPrice} ccy={lc.currency} /></strong></div>
+          <div><span>After 5% concession</span><strong><Money value={policyCheck.concessionPrice} ccy={lc.currency} /></strong><div className="hint">margin {policyCheck.marginAfterConcessionPct}% · floor {POLICY.minMargin * 100}%</div></div>
         </div>
       </section>
 

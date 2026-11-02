@@ -46,7 +46,7 @@ comes from not retyping the same figures into four places and not waiting for a 
 ## Reproduce everything
 
 ```
-node --test tests/*.test.mjs      # 382 tests, 0 failing (2 November 2026)
+node --test tests/*.test.mjs      # 403 tests, 0 failing (2 November 2026)
 node scripts/bench-quote.mjs     # this file's timing table
 node cli/quote.mjs               # the itemised quote card
 ```
