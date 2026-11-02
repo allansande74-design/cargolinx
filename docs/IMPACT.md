@@ -35,10 +35,11 @@ comes from not retyping the same figures into four places and not waiting for a 
 
 - **No pilot commitments are claimed.** Three pilot conversations were opened by email on 2 November
   2026 — a Kenyan contractor, a Nairobi distribution partner and a Ugandan trading house, each
-  importing from China through Mombasa. The Nairobi partner replied in the affirmative that day; his
-  own words, the lane and the date are added here when he sends them. Counterparties are described by
-  role, not by name, because none of them has agreed to be named in a public repository. Nothing is
-  claimed on any pilot's behalf until there is a name on file, a date and a sentence from the pilot.
+  importing from China through Mombasa. Two replied the same day. The Nairobi partner replied in the
+  affirmative; the Ugandan trading house replied, in his own words and spelling, "I would be
+  interested in importing mini strucks to be used for mobile eashing services and var washing
+  equipment". Neither reply is a commitment, a price, a volume or a date. Counterparties are described
+  by role, not by name, because none of them has agreed to be named in a public repository.
 - **No customer testimonials.** There are none yet.
 - **No market-size projections.** A number nobody can check does not belong in a submission.
 
