@@ -125,9 +125,14 @@ export default function NetworkView() {
   function raiseException(kind, severity) {
     if (!track) return;
     const at = new Date(new Date(baseTime).getTime() + clock * 60000).toISOString();
-    const next = tracking.exceptionOn(track, { at, kind, detail: `Recorded from the network screen (${kind})`, severity });
-    setTrack(next);
-    setTrackNote(`Exception recorded: ${kind} (${severity}). Stall escalation on this leg is paused until it is resolved.`);
+    try {
+      // The engine answers with { track, exception, ... } — the track is what the screen holds.
+      const res = tracking.exceptionOn(track, { at, kind, detail: `Recorded from the network screen (${kind})`, severity });
+      setTrack(res.track ?? res);
+      setTrackNote(`Exception recorded: ${kind} (${severity}). Stall escalation on this leg is paused until it is resolved.`);
+    } catch (err) {
+      setTrackNote(err.message);
+    }
   }
 
   const stalls = track ? tracking.detectStalls(track, { at: new Date(new Date(baseTime).getTime() + (clock + 60) * 60000).toISOString() }) : [];
@@ -464,7 +469,17 @@ export default function NetworkView() {
             <div className="row" style={{ marginTop: 6, flexWrap: "wrap", gap: 6 }}>
               <button type="button" onClick={() => raiseException("customs_hold", "major")}>Customs hold</button>
               <button type="button" onClick={() => raiseException("breakdown", "critical")}>Breakdown</button>
-              <button type="button" onClick={() => { const next = tracking.resolveException(track, { id: track.exceptions.find((x) => !x.resolvedAt)?.id, at: new Date(new Date(baseTime).getTime() + clock * 60000).toISOString(), resolution: "Released by customs after document review" }); setTrack(next); setTrackNote("Exception resolved; escalation resumes."); }}>Resolve exception</button>
+              <button type="button" onClick={() => {
+                const open = (track.exceptions ?? []).find((x) => !x.resolvedAt);
+                if (!open) return setTrackNote("No open exception to resolve — raise one first.");
+                try {
+                  const res = tracking.resolveException(track, { id: open.id, at: new Date(new Date(baseTime).getTime() + clock * 60000).toISOString(), resolution: `Resolved on the network screen (${open.kind})` });
+                  setTrack(res.track ?? res);
+                  setTrackNote(`Exception ${open.kind} resolved; escalation resumes.`);
+                } catch (err) {
+                  setTrackNote(err.message);
+                }
+              }}>Resolve exception</button>
             </div>
             <p style={{ marginTop: 10 }}>
               Health <strong>{health?.state}</strong> · open exceptions {health?.openExceptions ?? 0} · late legs {health?.lateLegs ?? 0} · held events {(track.pending ?? []).length} · history {track.history?.length ?? 0}

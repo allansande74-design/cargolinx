@@ -916,15 +916,37 @@ function TrackView({ shipment, shipments, onPick, onChange }) {
   async function addEvent() {
     setMsg("");
     try {
+      const hasBorder = (plan?.basis?.legs ?? []).some((l) => l.border);
+      if (kind === "border-queue" && !hasBorder) {
+        setMsg("This lane has no border post — a border-queue event would be a false record. Use Delay instead.");
+        return;
+      }
+      if (kind === "delivered" && !podName.trim()) {
+        setMsg("A POD needs the name of the person who signed for the cargo.");
+        return;
+      }
+      const deliveredAlready = shipment.status === "delivered";
+      if (deliveredAlready && kind === "delivered") {
+        setMsg("This shipment is already delivered and signed for. A second POD would overwrite the first signature.");
+        return;
+      }
+      const borderLeg = (plan?.basis?.legs ?? []).find((l) => l.border);
+      const borderPost = borderLeg ? borderLeg.name.split("-").pop().trim() : "the border";
+      const note = kind === "delivered"
+        ? `POD signed by ${podName.trim()}`
+        : kind === "border-queue"
+          ? `Border queue at ${borderPost}`
+          : `Delay reported by driver${deliveredAlready ? " (after delivery — recorded as a claim)" : ""}`;
       let next;
       if (kind === "delivered") {
-        next = applyEvent(plan, { type: "delivered", at: new Date().toISOString(), note: `POD signed by ${podName || "consignee"}` });
-        next.pod = { signedBy: podName || "consignee", at: new Date().toISOString() };
+        next = applyEvent(plan, { type: "delivered", at: new Date().toISOString(), note });
+        next.pod = { signedBy: podName.trim(), at: new Date().toISOString() };
       } else {
-        next = applyEvent(plan, { type: kind, delayHours: Number(delay), note: kind === "border-queue" ? "Border queue at Malaba" : "Delay reported by driver" });
+        next = applyEvent(plan, { type: kind, delayHours: Number(delay), note });
       }
-      const status = kind === "delivered" ? "delivered" : "in transit";
-      const events = [...(shipment.events ?? []), { type: kind, at: new Date().toISOString(), note: kind === "delivered" ? `POD signed by ${podName || "consignee"}` : `${delay}h — ${kind}` }];
+      // Delivered is terminal: a later delay is a claim against a closed delivery, not a reopening of the trip.
+      const status = deliveredAlready || kind === "delivered" ? "delivered" : "in transit";
+      const events = [...(shipment.events ?? []), { type: kind, at: new Date().toISOString(), note: kind === "delivered" ? note : `${delay}h — ${kind}` }];
       await saveShipment({ ...shipment, etaPlan: next, status, events });
       await flush();
       setMsg("Recorded on this device. It will sync when a link is available.");
