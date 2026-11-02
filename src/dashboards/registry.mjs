@@ -20,5 +20,5 @@ export const DASHBOARDS = [
 ];
 
 export function stubStatus() {
-  return Object.fromEntries(DASHBOARDS.map((d) => [d.key, "stub"]));
+  return Object.fromEntries(DASHBOARDS.map((d) => [d.key, "built"]));
 }

@@ -90,6 +90,7 @@ export default function Landing({ onEnter, onSignIn }) {
             <a href="#features">Product</a>
             <a href="#how">How it works</a>
             <a href="#corridors">Corridors</a>
+            <a href="#/hub">Dashboards</a>
           </nav>
           <div className="actions">
             <button className="btn btn-ghost" onClick={onSignIn}>Sign in</button>

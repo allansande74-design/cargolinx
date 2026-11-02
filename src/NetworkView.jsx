@@ -1,5 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { kvGet, kvSet, all, STORES, saveOrder } from "./lib/db.js";
+import {
+  registerTruck, verifyTruckPapers, approveTruck, truckReadiness,
+  availableTrucks, bookCargo, completeDelivery, transportInvoice, payTransport,
+} from "./lib/truck-matching.mjs";
+import { REQUIRED_DOCUMENTS, CORRIDORS as PARTNER_CORRIDORS } from "../engine/partners.mjs";
 
 import { AFRICA_26, BLOCS, membershipOf, coverage } from "../engine/network.mjs";
 import { gate, coverageWithDatasets, DATASETS } from "../engine/datasets.mjs";
@@ -202,6 +207,8 @@ export default function NetworkView() {
     driverName: "",
     distanceKm: "400",
     at: new Date().toISOString().slice(0, 10),
+    brokerFeeKes: "",
+    tripCostKes: "",
   });
   const [dResult, setDResult] = useState(null);
   const [dError, setDError] = useState("");
@@ -238,12 +245,15 @@ export default function NetworkView() {
     const order = dOrders.find((o) => o.id === dPick);
     if (!order) return setDError("Choose an order that is packed or on arrival first.");
     try {
-      const result = dispatch.dispatchOrder(order, {
+      const result = bookCargo({
+        order,
         partners: fleetBook,
         weightKg: Number(dForm.weightKg),
         lane: dForm.lane,
         driverName: dForm.driverName,
         distanceKm: dForm.distanceKm === "" ? null : Number(dForm.distanceKm),
+        brokerFeeKes: dForm.brokerFeeKes === "" ? null : Number(dForm.brokerFeeKes),
+        tripCostKes: dForm.tripCostKes === "" ? null : Number(dForm.tripCostKes),
         at: `${dForm.at}T08:00:00Z`,
       });
       setDResult(result);
@@ -257,9 +267,90 @@ export default function NetworkView() {
         setTrack(result.track);
         setClock(0);
         setTrackNote(`Tracking is open on ${result.order.trackingRef}, carried by ${result.vehicle.plate}. Report milestones as the carrier calls them; anything out of order is held and releases itself.`);
+        setTInvoice(null);
+        setTPay(null);
+        setTError("");
       }
     } catch (err) {
       setDError(err.message);
+    }
+  }
+
+  // ---- truck-to-cargo journey: readiness, completion and transport payment ----
+  const [tForm, setTForm] = useState({ weightKg: "12000", corridor: "northern", at: new Date().toISOString().slice(0, 10), freightKes: "" });
+  const [tReadiness, setTReadiness] = useState(null);
+  const [tAvailable, setTAvailable] = useState(null);
+  const [tSignedBy, setTSignedBy] = useState("");
+  const [tDelivered, setTDelivered] = useState(null);
+  const [tInvoice, setTInvoice] = useState(null);
+  const [tPay, setTPay] = useState(null);
+  const [tPayAmount, setTPayAmount] = useState("");
+  const [tError, setTError] = useState("");
+
+  function checkReadiness() {
+    setTError("");
+    setTReadiness(null);
+    setTAvailable(null);
+    if (!fleetBook.length) return setTError("Register and verify a truck first — readiness is read off the register.");
+    try {
+      const at = `${tForm.at}T08:00:00Z`;
+      const rows = availableTrucks(fleetBook, { corridor: tForm.corridor, weightKg: Number(tForm.weightKg), at });
+      const first = fleetBook[0].fleet?.[0];
+      const readiness = first ? truckReadiness(fleetBook[0], { plate: first.plate, corridor: tForm.corridor, at, weightKg: Number(tForm.weightKg) }) : null;
+      setTAvailable(rows);
+      setTReadiness(readiness);
+    } catch (err) {
+      setTError(err.message);
+    }
+  }
+
+  async function recordDelivery() {
+    setTError("");
+    const result = completeDelivery({ order: dResult?.order, signedBy: tSignedBy, at: new Date().toISOString() });
+    if (!result.ok) return setTError(result.refusals.map((r) => r.message).join(" "));
+    setTDelivered(result.order);
+    await saveOrder(result.order);
+  }
+
+  function raiseTransportInvoice() {
+    setTError("");
+    const freight = tForm.freightKes === "" ? dResult?.estimate?.freightKes : Number(tForm.freightKes);
+    const raised = transportInvoice({ order: tDelivered ?? dResult.order, freightKes: freight, lane: dResult.lane, at: new Date().toISOString() });
+    if (!raised.ok) return setTError(raised.reason);
+    setTInvoice(raised.invoice);
+    setTPayAmount(String(raised.invoice.balance));
+  }
+
+  function settleTransport() {
+    setTError("");
+    const paid = payTransport(tInvoice, { amount: Number(tPayAmount), method: "mpesa", at: new Date().toISOString() });
+    if (!paid.ok) return setTError(paid.reason);
+    setTInvoice(paid.invoice);
+    setTPay(paid);
+  }
+
+  // ---- one-click governed journey ----
+  const [jNote, setJNote] = useState("");
+  async function seedDemoJourney() {
+    setJNote("");
+    try {
+      const at = new Date().toISOString();
+      const demoTruck = registerTruck({
+        ownerName: "Otieno Haulage", country: "KE", contact: "+254700000222",
+        plate: "KDA 123A", classCode: "heavy_truck", capacityKg: 28000, corridors: ["northern"], at,
+      });
+      const papers = ["insurance", "inspection", "vehicle_licence", "driver_licence", "operating_permit"].map((type) => ({
+        type, reference: `${type.toUpperCase()}-DEMO-2026`, expiresAt: "2027-06-30",
+      }));
+      const verified = approveTruck(
+        verifyTruckPapers(demoTruck, { plate: "KDA 123A", documents: papers, verifiedBy: "Amanda", at }),
+        { by: "Allan", reference: "KRA PIN P052531547Z", at },
+      );
+      const next = [verified, ...fleetBook.filter((p) => p.id !== verified.id)];
+      await saveBook(next, "Demonstration truck KDA 123A onboarded, papers verified and owner approved. Add a demonstration order below, then dispatch it.");
+      setActiveId(verified.id);
+    } catch (err) {
+      setJNote(err.message);
     }
   }
 
@@ -538,6 +629,14 @@ export default function NetworkView() {
             Dispatch date
             <input type="date" value={dForm.at} onChange={(e) => setDForm({ ...dForm, at: e.target.value })} />
           </label>
+          <label>
+            Broker fee (KES, optional)
+            <input value={dForm.brokerFeeKes} onChange={(e) => setDForm({ ...dForm, brokerFeeKes: e.target.value })} inputMode="numeric" placeholder="e.g. 4000" />
+          </label>
+          <label>
+            Total trip cost (KES)
+            <input value={dForm.tripCostKes} onChange={(e) => setDForm({ ...dForm, tripCostKes: e.target.value })} inputMode="numeric" placeholder="basis for the 5% cap" />
+          </label>
           <button type="button" className="primary" onClick={runDispatch}>Dispatch</button>
         </div>
 
@@ -574,6 +673,103 @@ export default function NetworkView() {
             </ul>
             <p className="muted">The tracking panel above accepts this reference — report departure, gate-in and load events against it.</p>
           </div>
+        )}
+      </section>
+
+      <section className="card">
+        <h2>Truck-to-cargo matching</h2>
+        <p className="muted">
+          The full journey on one screen: a truck is onboarded as pending, each paper is verified against its reference,
+          the owner is approved by a named checker, the load is matched only to trucks that may legally take it, booking
+          happens before the order moves, delivery closes on a named proof of delivery, and the transport invoice is
+          settled through the invoicing engine. A broker fee above 5% of total trip cost is refused before dispatch.
+        </p>
+        <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+          <button type="button" className="primary" onClick={seedDemoJourney}>Onboard a demonstration truck</button>
+        </div>
+        {jNote && <div className="warning" style={{ marginTop: 8 }}>{jNote}</div>}
+        <p className="hint" style={{ marginTop: 8 }}>
+          Onboarding uses the Transport partners panel above: register the owner, verify each paper, then approve.
+          Papers this lane requires: {Object.values(REQUIRED_DOCUMENTS).map((d) => d.label).join(", ").toLowerCase()}
+          {PARTNER_CORRIDORS?.cross_border ? `, plus the cross-border set on ${PARTNER_CORRIDORS.cross_border.label.toLowerCase()}` : ""}.
+        </p>
+
+        <h3>Readiness and available trucks</h3>
+        <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+          <label>
+            Cargo weight (kg)
+            <input value={tForm.weightKg} onChange={(e) => setTForm({ ...tForm, weightKg: e.target.value })} inputMode="numeric" />
+          </label>
+          <label>
+            Corridor
+            <select value={tForm.corridor} onChange={(e) => setTForm({ ...tForm, corridor: e.target.value })}>
+              {LANES.map((c) => <option key={c} value={c}>{partners.CORRIDORS[c].label}</option>)}
+            </select>
+          </label>
+          <label>
+            Date
+            <input type="date" value={tForm.at} onChange={(e) => setTForm({ ...tForm, at: e.target.value })} />
+          </label>
+          <button type="button" className="primary" onClick={checkReadiness}>Check readiness</button>
+        </div>
+        {tReadiness && (
+          <div className={tReadiness.eligible ? "notice" : "warning"} style={{ marginTop: 8 }}>
+            <p>
+              <strong>{tReadiness.plate}</strong> ({tReadiness.owner}, {tReadiness.partnerStatus}):{" "}
+              {tReadiness.eligible ? "ready for this load." : "not ready."}
+            </p>
+            <ul>
+              {tReadiness.documents.map((d) => (
+                <li key={d.type}>{REQUIRED_DOCUMENTS[d.type]?.label ?? d.type}: {d.status}{d.reference ? ` · ${d.reference}` : ""}{d.expiresAt ? ` · expires ${String(d.expiresAt).slice(0, 10)}` : ""}</li>
+              ))}
+            </ul>
+            {tReadiness.missing.length > 0 && <p>Still needed: {tReadiness.missing.map((m) => REQUIRED_DOCUMENTS[m]?.label ?? m).join(", ")}.</p>}
+          </div>
+        )}
+        {tAvailable && (
+          <p className="muted" style={{ marginTop: 8 }}>
+            {tAvailable.length === 0
+              ? "No registered truck may legally take this load on this lane today."
+              : `Available, smallest first: ${tAvailable.map((t) => `${t.plate} (${t.capacityKg.toLocaleString("en-KE")} kg, ${t.owner})`).join(" · ")}`}
+          </p>
+        )}
+
+        <h3>Delivery and transport payment</h3>
+        {tError && <div className="warning" style={{ marginTop: 8 }}>{tError}</div>}
+        {!dResult?.ok && <p className="hint">Dispatch a load above first — delivery and payment continue from that booking.</p>}
+        {dResult?.ok && (
+          <>
+            <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+              <label>
+                Signed for by (proof of delivery)
+                <input value={tSignedBy} onChange={(e) => setTSignedBy(e.target.value)} placeholder="Name of the person who received the goods" />
+              </label>
+              <button type="button" onClick={recordDelivery}>Record delivery</button>
+            </div>
+            {tDelivered && <p className="notice" style={{ marginTop: 8 }}>Delivered. Order {tDelivered.id} closed on the signature of {tDelivered.pod?.signedBy}.</p>}
+            <div className="row" style={{ gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+              <label>
+                Freight (KES, blank = booking estimate)
+                <input value={tForm.freightKes} onChange={(e) => setTForm({ ...tForm, freightKes: e.target.value })} inputMode="numeric" placeholder={dResult.estimate ? String(dResult.estimate.freightKes) : ""} />
+              </label>
+              <button type="button" onClick={raiseTransportInvoice} disabled={!tDelivered}>Raise transport invoice</button>
+            </div>
+            {tInvoice && (
+              <div style={{ marginTop: 8 }}>
+                <p>
+                  Invoice <strong>{tInvoice.number}</strong> · total {kes(tInvoice.total)} · paid {kes(tInvoice.paid)} · balance {kes(tInvoice.balance)} · {tInvoice.status}
+                </p>
+                <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                  <label>
+                    Payment (KES)
+                    <input value={tPayAmount} onChange={(e) => setTPayAmount(e.target.value)} inputMode="numeric" />
+                  </label>
+                  <button type="button" onClick={settleTransport}>Record transport payment</button>
+                </div>
+                {tPay && <p className="muted" style={{ marginTop: 6 }}>Balance now {kes(tPay.balance)} — {tPay.invoice.status}.</p>}
+              </div>
+            )}
+          </>
         )}
       </section>
     </>

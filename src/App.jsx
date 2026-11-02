@@ -21,6 +21,7 @@ import { purchaseOrderHtml } from "./lib/supplier-docs.mjs";
 import { startCount, applyCount, writeOff, shrinkageReport, WRITE_OFF_REASONS } from "../engine/inventory-ops.mjs";
 import { list as listPlugins, status as pluginStatus, configure as configurePlugin, dryRun, supports as pluginSupports, get as getPlugin } from "../engine/plugins.mjs";
 import NetworkView from "./NetworkView.jsx";
+import DashboardHub from "./dashboards/hub.jsx";
 import Landing from "./Landing.jsx";
 import Auth from "./Auth.jsx";
 import AmandaBar from "./AmandaBar.jsx";
@@ -160,7 +161,7 @@ function Desk({ onSignOut }) {
                 <button
                   key={k}
                   className={"navitem" + (tab === k ? " active" : "")}
-                  onClick={() => setTab(k)}
+                  onClick={() => { if (k === "hub") { window.location.hash = "#/hub"; return; } setTab(k); }}
                   aria-current={tab === k ? "page" : undefined}
                 >
                   <svg className="ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{ICONS[icon]}</svg>
@@ -251,6 +252,7 @@ const NAV = [
     ["warehouse", "Warehouse", "warehouse"],
     ["messages", "Messages", "chat"],
     ["network", "Network", "share"],
+    ["hub", "Dashboards", "grid"],
     ["plugins", "Plugins", "puzzle"],
     ["accounts", "Accounts", "users"],
     ["settings", "Setup", "gear"],
@@ -269,6 +271,7 @@ const PAGE = {
   warehouse: { title: "Warehouse", sub: "Lots, bin locations, stock counts and write-offs." },
   messages: { title: "Messages", sub: "Notification drafts per event, in your words, sent on approval." },
   network: { title: "Network", sub: "Partners, lanes and what has been handed over to whom." },
+  hub: { title: "Dashboards", sub: "Eighteen stakeholder desks, each scoped to the role that works it." },
   plugins: { title: "Plugins", sub: "Optional integrations, each probed before it is trusted." },
   accounts: { title: "Accounts", sub: "People, roles and what each one is allowed to do." },
   settings: { title: "Setup", sub: "Backend, storage and model configuration for this device." },
@@ -286,6 +289,7 @@ const ICONS = {
   warehouse: <><path d="M3 21V9l9-6 9 6v12" /><path d="M7 21v-7h10v7" /><path d="M7 17h10" /></>,
   chat: <><path d="M21 12a8 8 0 0 1-8 8H7l-4 3V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8Z" /><path d="M8.5 11h7M8.5 14.5h4" /></>,
   share: <><circle cx="18" cy="5" r="2.6" /><circle cx="6" cy="12" r="2.6" /><circle cx="18" cy="19" r="2.6" /><path d="M8.4 10.8l7.2-4.2M8.4 13.2l7.2 4.2" /></>,
+  grid: <><rect x="3.5" y="3.5" width="7" height="7" rx="1.4" /><rect x="13.5" y="3.5" width="7" height="7" rx="1.4" /><rect x="3.5" y="13.5" width="7" height="7" rx="1.4" /><rect x="13.5" y="13.5" width="7" height="7" rx="1.4" /></>,
   puzzle: <><path d="M9 4.5a2 2 0 0 1 4 0V6h2.5a1.5 1.5 0 0 1 1.5 1.5V10h1.5a2 2 0 0 1 0 4H17v2.5a1.5 1.5 0 0 1-1.5 1.5H13v1.5a2 2 0 0 1-4 0V18H6.5A1.5 1.5 0 0 1 5 16.5V14H3.5a2 2 0 0 1 0-4H5V7.5A1.5 1.5 0 0 1 6.5 6H9V4.5Z" /></>,
   users: <><circle cx="9" cy="8" r="3.2" /><path d="M3.5 20a5.5 5.5 0 0 1 11 0" /><path d="M16 5.2a3.2 3.2 0 0 1 0 6.1M17.5 20a5.6 5.6 0 0 0-2-4.3" /></>,
   gear: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" /></>,
@@ -301,6 +305,7 @@ function tabFromHash() {
 function routeFromHash() {
   const h = window.location.hash || "";
   if (h.startsWith("#/signin")) return "signin";
+  if (/^#\/hub(\/|$)/.test(h)) return "hub";
   if (h.startsWith("#/desk")) return "desk";
   return "landing";
 }
@@ -316,7 +321,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    document.title = route === "desk" ? "Altovex CargoLinx · Desk" : route === "signin" ? "Sign in · Altovex CargoLinx" : "Altovex CargoLinx · Offline freight desk";
+    document.title = route === "desk" ? "Altovex CargoLinx · Desk" : route === "signin" ? "Sign in · Altovex CargoLinx" : route === "hub" ? "Altovex CargoLinx · Dashboards" : "Altovex CargoLinx · Offline freight desk";
     document.body.classList.toggle("site", route !== "desk");
   }, [route]);
 
@@ -334,6 +339,14 @@ export default function App() {
     return (
       <>
         <Desk onSignOut={signOut} />
+        <AmandaBar />
+      </>
+    );
+  }
+  if (route === "hub") {
+    return (
+      <>
+        <DashboardHub />
         <AmandaBar />
       </>
     );
