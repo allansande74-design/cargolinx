@@ -2,7 +2,7 @@
 
 **Entrant:** Sande Allan, Altovex Global Logistics Co. Ltd, Nairobi, Kenya.
 **Build:** Altovex CargoLinx — an offline freight desk for the East African corridor.
-**Live:** https://mindful-koan-nn55.here.now
+**Live:** https://altovexcargolinx.allansande74.workers.dev/
 **Repository:** https://github.com/allansande74-design/cargolinx
 **Licence:** MIT (see `LICENSE`).
 

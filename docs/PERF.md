@@ -1,9 +1,11 @@
 # Measured performance — Altovex CargoLinx
 
-Measured on 31 October 2026 against the deployed build
-(`https://mindful-koan-nn55.here.now`) from the operator machine in Nairobi, using Chromium
-driven over the DevTools Protocol. No figure below is estimated; each is read from the
-browser's own performance timeline.
+Measured on 31 October 2026 against the build then served at
+`https://mindful-koan-nn55.here.now`, from the operator machine in Nairobi, using Chromium
+driven over the DevTools Protocol. The canonical deployment has since moved to
+`https://altovexcargolinx.allansande74.workers.dev/`; these figures have not been re-run against
+that host, and are reported here as the measurement they were. No figure below is estimated; each
+is read from the browser's own performance timeline.
 
 ## Results
 

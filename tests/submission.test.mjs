@@ -75,11 +75,14 @@ test("the files the feature sections name by hand are the ones the reader return
 
 // ------------------------------------------------------- (2) no submission claims
 
-test("the README may name the verified public repository URL only", () => {
-  // The public repo is verified (HTTP 200) so the README may name exactly that one address.
+test("the README may name verified public addresses only", () => {
+  // Each address in this list has been fetched and returned HTTP 200 for this build.
   // Any other repo/hosting address stays forbidden until it actually exists and is verified.
-  const allowed = "https://github.com/allansande74-design/cargolinx";
-  const forbidden = ["vercel.app", "workers.dev", "netlify.app", "here.now/c/"];
+  const allowed = [
+    "https://github.com/allansande74-design/cargolinx",
+    "https://altovexcargolinx.allansande74.workers.dev/",
+  ];
+  const forbidden = ["vercel.app", "netlify.app", "here.now/c/"];
   const lines = README.split("\n");
   const hits = [];
   for (const [i, line] of lines.entries()) {
@@ -87,7 +90,7 @@ test("the README may name the verified public repository URL only", () => {
     for (const token of forbidden) {
       if (lower.includes(token)) hits.push(`line ${i + 1}: "${token}" in ${line.trim()}`);
     }
-    if (lower.includes("github.com/") && !line.includes(allowed))
+    if (lower.includes("github.com/") && !line.includes(allowed[0]))
       hits.push(`line ${i + 1}: unverified github URL in ${line.trim()}`);
   }
   assert.deepEqual(hits, [], `README makes a claim that is not true of this repository:\n${hits.join("\n")}`);
@@ -95,9 +98,8 @@ test("the README may name the verified public repository URL only", () => {
 
 test("the README links no absolute URL except localhost, the verified repo and the verified live desk", () => {
   const allowedRepo = "https://github.com/allansande74-design/cargolinx";
-  // Verified 1 November 2026: HTTP 200, app shell loads its bundle (434,899 B) and service
-  // worker. A hosting address goes in this list only after it has been fetched and checked.
-  const allowedLive = "https://allansande74-design.github.io/cargolinx/";
+  // Verified 2 November 2026: HTTP 200, app shell, service worker and manifest all served, no login.
+  const allowedLive = "https://altovexcargolinx.allansande74.workers.dev/";
   const allowedDemo = "https://allansande74-design.github.io/cargolinx/demo/";
   const urls = README.match(/https?:\/\/[^\s`)]+/g) ?? [];
   const external = urls.filter(
