@@ -57,6 +57,13 @@ MONO = Path("/home/amanda/out/4k/amanda-monogram-4k.png")
 SHOT_HOME = WORK / "shots" / "app_home.png"
 SHOT_DESK = WORK / "shots" / "app_deskquotes.png"
 IMG_PROOF = Path("/home/amanda/out/evidence/meta_image_proof.png")
+SHOT_CARGO = WORK / "shots" / "cargo_reels_card.png"
+SHOT_QUOTE = WORK / "shots" / "quote_doc_crop.png"
+SHOT_NOTE = WORK / "shots" / "delivery-note_crop.png"
+SHOT_PACK = WORK / "shots" / "packing-list_crop.png"
+SHOT_PORT = WORK / "shots" / "port_card.png"
+LIVE_URL = "altovexcargolinx.allansande74.workers.dev"
+
 
 SLOTS = json.loads((WORK / "fit_report.json").read_text())
 DURS = {r["key"]: r["slot"] for r in SLOTS}
@@ -83,6 +90,7 @@ LADDER = [
     ("Railway development levy", "2%", "29,145.00"),
     ("VAT", "16%", "301,942.20"),
     ("PVoC conformity", "", "34,404.95"),
+    ("Clearing & transport", "", "117,000.00"),
 ]
 
 CAPTIONS: dict[str, list[str]] = {}
@@ -145,6 +153,17 @@ def card_shot(f: Frame, path: Path, x: int, y: int, w: int, h: int, alpha=1.0):
     f.d.rectangle([x, y, x + w, y + h], outline=GOLD, width=4)
 
 
+def drift(im: Image.Image, p: float) -> Image.Image:
+    """A slow, sub-pixel camera move so no card is ever dead still."""
+    w, h = im.size
+    z = 1.0 + 0.006 * p
+    nw, nh = int(round(w * z)), int(round(h * z))
+    scaled = im.resize((nw, nh), Image.BILINEAR)
+    left = (nw - w) // 2 + int(round(3 * p))
+    top = (nh - h) // 2 - int(round(2 * p))
+    return scaled.crop((left, top, left + w, top + h))
+
+
 def banner(f: Frame, text: str, alpha=1.0, y=88):
     f.text(72, y, text, 26, "sb", GOLD, alpha=alpha)
 
@@ -160,8 +179,8 @@ def s01(p, f):
            alpha=span(p, 0.2, 0.4))
     f.text(72, 548, "English & Kiswahili · online & offline · Nairobi, Kenya", 30, "r", MUTED,
            alpha=span(p, 0.3, 0.5))
-    card_shot(f, SHOT_HOME, 980, 300, 868, 488, alpha=span(p, 0.45, 0.8) * 0.96)
-    f.text(980, 806, "the running build, on this device", 22, "r", MUTED, alpha=span(p, 0.6, 0.85))
+    card_shot(f, SHOT_PORT, 900, 300, 948, 468, alpha=span(p, 0.45, 0.8) * 0.96)
+    f.text(900, 790, "Mombasa container terminal", 22, "r", MUTED, alpha=span(p, 0.6, 0.85))
 
 
 # ----------------------------------------------------------------- scene 02
@@ -215,8 +234,8 @@ def s03(p, f):
         f.card(72, y, 1060, 96, alpha=a)
         f.text(104, y + 26, n, 30, "b", GOLD, alpha=a)
         f.text(176, y + 24, t, 32, "r", SOFT, alpha=a)
-    label_chip(f, 72, 786, "ILLUSTRATIVE · AI-GENERATED", alpha=span(p, 0.6, 0.8))
-    card_shot(f, SHOT_DESK, 1180, 300, 668, 376, alpha=span(p, 0.55, 0.85) * 0.9)
+    card_shot(f, SHOT_CARGO, 1180, 320, 668, 400, alpha=span(p, 0.5, 0.8))
+    f.text(1180, 748, "Mombasa, October", 20, "r", MUTED, alpha=span(p, 0.7, 0.9))
 
 
 # ----------------------------------------------------------------- scene 04
@@ -260,8 +279,7 @@ def s05(p, f):
         f.text(180, 398 + i * 86, t, 30, "r", SOFT, alpha=a)
     f.text(72, 660, "And paperwork shuts out the traders and drivers", 34, "r", SOFT, alpha=span(p, 0.6, 0.78))
     f.text(72, 710, "who need it most.", 34, "r", SOFT, alpha=span(p, 0.66, 0.84))
-    label_chip(f, 72, 786, "ILLUSTRATIVE · AI-GENERATED", alpha=span(p, 0.7, 0.9))
-    card_shot(f, SHOT_DESK, 1220, 300, 628, 353, alpha=span(p, 0.5, 0.8) * 0.85)
+    card_shot(f, SHOT_PORT, 1220, 300, 628, 300, alpha=span(p, 0.5, 0.8) * 0.85)
 
 
 # ----------------------------------------------------------------- scene 06
@@ -275,13 +293,13 @@ def s06(p, f):
         a = span(p, 0.2 + i * 0.1, 0.4 + i * 0.1)
         f.text(104, 380 + i * 96, "—", 30, "b", (110, 124, 146), alpha=a)
         f.text(160, 378 + i * 96, t, 32, "r", (170, 182, 200), alpha=a)
-    # right: after, real app
+    # right: after, the delivery note the desk issues
     f.card(860, 280, 988, 480, alpha=span(p, 0.3, 0.5))
     f.text(892, 300, "AFTER", 30, "sb", GOLD, alpha=span(p, 0.35, 0.55))
-    card_shot(f, SHOT_DESK, 892, 352, 924, 380, alpha=span(p, 0.4, 0.7))
+    card_shot(f, SHOT_NOTE, 892, 352, 924, 300, alpha=span(p, 0.4, 0.7))
     f.text(892, 744 - 160, "", 20, "r", MUTED, alpha=0)
     f.text(892, 742, "one entry · priced quote · documents", 24, "r", GOLD, alpha=span(p, 0.65, 0.85))
-    f.text(72, 800, "Screen capture from the running build", 20, "r", MUTED, alpha=span(p, 0.7, 0.9))
+    f.text(72, 800, "Documents issued by the build, same shipment", 20, "r", MUTED, alpha=span(p, 0.7, 0.9))
 
 
 # ----------------------------------------------------------------- scene 07
@@ -296,7 +314,7 @@ def s07(p, f):
         f.text(x + 24, 330, s, 32, "sb", WHITE if i % 2 == 0 else SOFT, alpha=a)
         if i < len(stages) - 1:
             f.d.line([(x + 256, 360), (x + 288, 360)], fill=GOLD, width=3)
-    card_shot(f, SHOT_HOME, 72, 470, 1320, 300, alpha=span(p, 0.5, 0.8) * 0.9)
+    card_shot(f, SHOT_PACK, 72, 468, 1320, 302, alpha=span(p, 0.5, 0.8) * 0.95)
     f.text(1430, 470, "the desk", 26, "r", MUTED, alpha=span(p, 0.55, 0.8))
     f.text(1430, 508, "as it runs", 26, "r", MUTED, alpha=span(p, 0.6, 0.85))
     f.text(1430, 546, "today", 26, "r", MUTED, alpha=span(p, 0.65, 0.9))
@@ -315,14 +333,14 @@ def s08(p, f):
         f.d.rectangle([90 + i * 12, 330 - hh, 90 + i * 12 + 6, 330 + hh],
                       fill=(int(GOLD[0] * a), int(GOLD[1] * a), int(GOLD[2] * a)))
     f.text(90, 380, "recorded voice note · real audio", 22, "r", MUTED, alpha=span(p, 0.3, 0.5))
-    rows = [("Origin", "Mombasa"), ("Destination", "Kampala"), ("Cargo", "20 ft container, solar panels"), ("Quantity", "1")]
+    rows = [("Origin", "Mombasa"), ("Destination", "Kampala"), ("Cargo", "20 ft container, electrical cable"), ("Quantity", "1")]
     for i, (k, v) in enumerate(rows):
         a = span(p, 0.3 + i * 0.1, 0.5 + i * 0.1)
         y = 450 + i * 76
         f.card(72, y, 860, 64, alpha=a, fill=(16, 44, 78))
         f.text(100, y + 16, k, 24, "sb", GOLD, alpha=a)
         f.text(300, y + 16, v, 26, "r", SOFT, alpha=a)
-    card_shot(f, SHOT_DESK, 980, 300, 868, 380, alpha=span(p, 0.55, 0.85) * 0.92)
+    card_shot(f, SHOT_NOTE, 980, 336, 868, 281, alpha=span(p, 0.55, 0.85) * 0.95)
     f.text(980, 700, "Recorded live call · 31 Oct 2026 · 1,040 ms of audio accepted",
            21, "r", MUTED, alpha=span(p, 0.7, 0.9))
 
@@ -331,11 +349,10 @@ def s08(p, f):
 def s09(p, f):
     banner(f, "05 · CARGO AND SEAL")
     label_chip(f, 72, 140, "META MODEL · SAM 3.1", color=GOLD)
-    f.text(72, 220, "A photo of the load, segmented.", 56, "b", WHITE, alpha=span(p, 0.02, 0.18))
-    if IMG_PROOF.exists():
-        card_shot(f, IMG_PROOF, 72, 320, 900, 420, alpha=span(p, 0.15, 0.45))
+    f.text(72, 220, "A photo of the load, read by the model.", 50, "b", WHITE, alpha=span(p, 0.02, 0.18))
+    card_shot(f, SHOT_CARGO, 72, 320, 900, 420, alpha=span(p, 0.15, 0.45))
     rows = [("Cargo counted", "boxes returned by the model"),
-            ("Seal status", "recorded against the shipment"),
+            ( "Seal status", "recorded against the shipment"),
             ("Both", "written into the same file")]
     for i, (k, v) in enumerate(rows):
         a = span(p, 0.35 + i * 0.12, 0.55 + i * 0.12)
@@ -343,8 +360,9 @@ def s09(p, f):
         f.card(1010, y, 838, 96, alpha=a)
         f.text(1042, y + 18, k, 28, "sb", WHITE, alpha=a)
         f.text(1042, y + 56, v, 22, "r", SOFT, alpha=a)
-    f.text(72, 770, "Recorded live call · 31 Oct 2026 · box and mask geometry returned",
+    f.text(72, 780, "Recorded call · 31 Oct 2026 · box and mask geometry returned",
            21, "r", MUTED, alpha=span(p, 0.7, 0.9))
+
 
 
 # ----------------------------------------------------------------- scene 10
@@ -375,13 +393,15 @@ def s10(p, f):
 # ----------------------------------------------------------------- scene 11
 def s11(p, f):
     banner(f, "07 · THE CARD THE BUYER GETS")
-    label_chip(f, 72, 140, "META MODEL · MUSE IMAGE 1.0", color=GOLD)
-    f.text(72, 220, "Muse Image draws the quote card.", 54, "b", WHITE, alpha=span(p, 0.02, 0.2))
-    if IMG_PROOF.exists():
-        card_shot(f, IMG_PROOF, 760, 300, 1088, 508, alpha=span(p, 0.1, 0.4))
-    f.text(72, 340, "KES 2,912,205.29", 58, "b", GOLD, alpha=span(p, 0.2, 0.45))
-    f.text(72, 420, "at 30% margin", 30, "r", SOFT, alpha=span(p, 0.3, 0.5))
-    f.text(72, 520, "AI-generated · made live", 22, "r", MUTED, alpha=span(p, 0.4, 0.6))
+    label_chip(f, 72, 140, "CARGOLINX · QUOTATION", color=GOLD)
+    f.text(72, 220, "The buyer's quote card.", 50, "b", WHITE, alpha=span(p, 0.02, 0.2))
+    card_shot(f, SHOT_QUOTE, 980, 250, 860, 645, alpha=span(p, 0.1, 0.4))
+    f.text(72, 340, "KES 2,912,205.29", 56, "b", GOLD, alpha=span(p, 0.2, 0.45))
+    f.text(72, 416, "price before VAT, at 30% margin", 26, "r", SOFT, alpha=span(p, 0.3, 0.5))
+    f.text(72, 500, "Landed cost before VAT", 22, "r", MUTED, alpha=span(p, 0.4, 0.6))
+    f.text(72, 530, "KES 2,038,543.70", 30, "sb", WHITE, alpha=span(p, 0.45, 0.65))
+    f.text(72, 600, "Issued by the desk, valid 14 days,", 22, "r", MUTED, alpha=span(p, 0.55, 0.75))
+    f.text(72, 630, "signed Sande Allan.", 22, "r", MUTED, alpha=span(p, 0.58, 0.78))
 
 
 # ----------------------------------------------------------------- scene 12
@@ -395,7 +415,6 @@ def s12(p, f):
     f.text(692, 348, "ONLINE — SYNCED 1", 26, "sb", MUTED if off else (140, 220, 170))
     f.text(72, 540, "Writes queue on the device with an idempotency key", 26, "r", SOFT, alpha=span(p, 0.2, 0.4))
     f.text(72, 590, "and drain on reconnect, without a second row.", 26, "r", SOFT, alpha=span(p, 0.3, 0.5))
-    card_shot(f, SHOT_DESK, 1240, 320, 608, 300, alpha=span(p, 0.4, 0.7) * 0.9)
 
 
 # ----------------------------------------------------------------- scene 13
@@ -432,7 +451,7 @@ def s14(p, f):
         f.text(x + 28, y + 26, t, 30, "sb", WHITE, alpha=a)
     f.text(72, 620, "On the Northern Corridor, and a file that survives scrutiny.",
            28, "r", SOFT, alpha=span(p, 0.6, 0.8))
-    card_shot(f, SHOT_HOME, 1080, 300, 768, 432, alpha=span(p, 0.5, 0.8) * 0.9)
+    card_shot(f, SHOT_QUOTE, 1080, 300, 720, 540, alpha=span(p, 0.5, 0.8) * 0.95)
 
 
 # ----------------------------------------------------------------- scene 15
@@ -441,7 +460,7 @@ def s15(p, f):
     f.text(72, 170, "CargoLinx", 150, "b", WHITE, alpha=min(1, p * 4))
     f.text(72, 400, "Built for our world, and ready for yours.", 46, "r", SOFT, alpha=span(p, 0.08, 0.3))
     f.text(72, 500, "Live", 24, "sb", GOLD, alpha=span(p, 0.2, 0.4))
-    f.text(180, 496, "rising-hollow-zqz5.here.now", 32, "b", WHITE, alpha=span(p, 0.22, 0.42))
+    f.text(180, 496, LIVE_URL, 30, "b", WHITE, alpha=span(p, 0.22, 0.42))
     f.text(72, 556, "Code", 24, "sb", GOLD, alpha=span(p, 0.28, 0.46))
     f.text(180, 552, "github.com/allansande74-design/cargolinx", 30, "r", SOFT, alpha=span(p, 0.3, 0.48))
     f.text(72, 640, "Seeking pilots, conformity testing and working capital", 30, "r", WHITE,
@@ -485,7 +504,7 @@ def main() -> None:
             f = Frame(key, idx)
             draw(p, f)
             footer(f, idx, caption_for(key, p), alpha=min(1.0, 0.15 + p * 6))
-            proc.stdin.write(f.im.tobytes())
+            proc.stdin.write(drift(f.im, p).tobytes())
         print(f"seg {key} {DURS[key]:.2f}s {n}f", flush=True)
 
     proc.stdin.close()
