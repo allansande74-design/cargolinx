@@ -4,9 +4,9 @@ The suite is run on the build machine and the result is committed here, because 
 repository no longer uses GitHub-hosted runners (see `.github/workflows/README.md`). Every figure below is
 copied from a real terminal run, not written by hand.
 
-- **Date:** 2 November 2026, 07:39–07:41 UTC
+- **Date:** 2 November 2026, 08:28 UTC (latest re-run)
 - **Machine:** Linux 6.8, Node v22.23.4, npm bundled with that Node
-- **Tree under test:** `efedf76` plus the documentation and URL changes in this commit
+- **Tree under test:** `7d08abf` plus the timestamp change in this commit
 - **Package:** `cargolinx-v2@0.2.0`
 
 ## 1. Test suite
@@ -26,7 +26,7 @@ TAP version 13
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 1276.301894
+# duration_ms 1283.051052
 ```
 
 Exit status `0`. 382 assertions across the engine, the quote ladder, the offline queue, the
@@ -56,13 +56,14 @@ installable offline desk is part of the artefact rather than a manual step.
 
 ## 3. The deployed build answers
 
-Fetched from the operator machine on 2 November 2026 at 07:41 UTC:
+Fetched from the operator machine on 2 November 2026 at 08:28 UTC:
 
 ```
 https://altovexcargolinx.allansande74.workers.dev/                      -> 200
 https://altovexcargolinx.allansande74.workers.dev/sw.js                 -> 200
 https://altovexcargolinx.allansande74.workers.dev/manifest.webmanifest  -> 200
 https://altovexcargolinx.allansande74.workers.dev/demo/                 -> 200
+https://altovexcargolinx.allansande74.workers.dev/demo/cargolinx-demo-entry-153s.mp4 -> 200 (video/mp4)
 ```
 
 No login, no interstitial. The page shell, the service worker and the manifest are served by
