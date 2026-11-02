@@ -34,9 +34,10 @@ comes from not retyping the same figures into four places and not waiting for a 
 ## What is deliberately absent
 
 - **No pilot commitments are claimed.** Three pilot conversations were opened by email on 2 November
-  2026 — Milicons (Brian Ojongo), Ndambuki, and 2Michaelz in Kampala (Tumwesigye Micheal). Replies are
-  pending, so nothing is claimed on their behalf. A named pilot appears in this repository only when
-  there is a name, a date and a sentence from the pilot.
+  2026 — Milicons (Brian Ojongo), Ndambuki, and 2Michaelz in Kampala (Tumwesigye Micheal). Ndambuki
+  replied in the affirmative that day; his own words, the lane and the date are added here when he
+  sends them. The other two are pending. Nothing is claimed on any pilot's behalf until there is a
+  name, a date and a sentence from the pilot himself.
 - **No customer testimonials.** There are none yet.
 - **No market-size projections.** A number nobody can check does not belong in a submission.
 
