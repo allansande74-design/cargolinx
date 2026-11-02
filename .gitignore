@@ -32,3 +32,8 @@ out/demo/*.mp4
 
 # GitHub Pages build output — generated, deployed by scripts/deploy-pages.sh
 dist-pages/
+
+# film work directories — frames, audio and QA stills stay on the build machine;
+# only the scripts, the QA note and the final cut are committed
+out/demo/*/
+out/demo/*.png

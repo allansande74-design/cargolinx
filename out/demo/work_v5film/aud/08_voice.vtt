@@ -1,8 +1,0 @@
-1
-00:00:00,100 --> 00:00:02,889
-A driver simply sends a voice note.
-
-2
-00:00:02,839 --> 00:00:11,276
-Muse Voice Transcribe turns it into a structured cargo record, origin, destination, cargo and quantity, without typing a word.
-
