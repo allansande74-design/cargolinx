@@ -61,7 +61,7 @@ The model layer is narrow on purpose and every call names the model that served 
 
 ## The demo
 
-- **Watch:** https://allansande74-design.github.io/cargolinx/demo/ — `cargolinx-demo-entry-153s.mp4`,
+- **Watch:** https://altovexcargolinx.allansande74.workers.dev/demo/ — `cargolinx-demo-entry-153s.mp4`,
   2 min 34 s, 1920x1080, narrated, no login.
 - Every document on screen is raised by the product itself for one shipment (order CLX-261031-714):
   the quotation from `src/lib/quote-doc.mjs`, the delivery note and packing list from
