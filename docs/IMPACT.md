@@ -34,10 +34,11 @@ comes from not retyping the same figures into four places and not waiting for a 
 ## What is deliberately absent
 
 - **No pilot commitments are claimed.** Three pilot conversations were opened by email on 2 November
-  2026 — Milicons (Brian Ojongo), Ndambuki, and 2Michaelz in Kampala (Tumwesigye Micheal). Ndambuki
-  replied in the affirmative that day; his own words, the lane and the date are added here when he
-  sends them. The other two are pending. Nothing is claimed on any pilot's behalf until there is a
-  name, a date and a sentence from the pilot himself.
+  2026 — a Kenyan contractor, a Nairobi distribution partner and a Ugandan trading house, each
+  importing from China through Mombasa. The Nairobi partner replied in the affirmative that day; his
+  own words, the lane and the date are added here when he sends them. Counterparties are described by
+  role, not by name, because none of them has agreed to be named in a public repository. Nothing is
+  claimed on any pilot's behalf until there is a name on file, a date and a sentence from the pilot.
 - **No customer testimonials.** There are none yet.
 - **No market-size projections.** A number nobody can check does not belong in a submission.
 
