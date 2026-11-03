@@ -9,15 +9,9 @@
  * Buying prices are solved backwards from the client price, never accepted as offered.
  */
 import { KE_RATES } from "./landed.mjs";
+import { POLICY_VALUES } from "./policy-values.mjs";
 
-export const POLICY = {
-  targetMargin: 0.30,
-  minMargin: 0.15,
-  negotiationRoom: 0.05,   // room we deliberately leave for the client to push
-  marketHeadroom: 0.05,    // how far under market wholesale we must sit
-  maxQuoteValidityDays: 30,
-  fxMaxAgeHours: 24,
-};
+export const POLICY = { ...POLICY_VALUES };
 
 const round = (n, dp = 2) => Math.round((n + Number.EPSILON) * 10 ** dp) / 10 ** dp;
 

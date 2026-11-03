@@ -4,6 +4,7 @@
  * so a quote can be defended line by line at a KRA counter.
  */
 import { KE_2026 } from "./rates/ke-2026.mjs";
+import { POLICY_VALUES } from "./policy-values.mjs";
 
 export const KE_RATES = KE_2026;
 
@@ -95,7 +96,7 @@ export function landedCost(input, rates = KE_RATES) {
  * Quote from a landed cost.
  * Floor is a refusal, not a warning: below the floor the engine refuses to issue.
  */
-export function quote(lc, { marginPct, minMarginPct = 0.15, targetMinPct = 0.3, targetMaxPct = 0.4 } = {}) {
+export function quote(lc, { marginPct, minMarginPct = POLICY_VALUES.minMargin, targetMinPct = POLICY_VALUES.targetMargin, targetMaxPct = POLICY_VALUES.maxMargin } = {}) {
   if (typeof marginPct !== "number") throw new Error("marginPct required");
   if (marginPct < minMarginPct) {
     throw new Error(`margin ${(marginPct * 100).toFixed(1)}% is below the ${(minMarginPct * 100).toFixed(0)}% floor — escalate, do not issue`);

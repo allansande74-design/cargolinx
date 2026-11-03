@@ -185,7 +185,7 @@ function Desk({ onSignOut }) {
           </div>
           <div className="demo-note">
             <span className="demo-dot" aria-hidden="true" />
-            Demo workspace — sample policy settings
+            Demo workspace — sample policy settings (25% target, 15% floor), not the operator's
           </div>
           <button className="ghost small" onClick={onSignOut}>Sign out</button>
         </div>

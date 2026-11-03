@@ -1,13 +1,23 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
+import { fileURLToPath } from "node:url";
 
 // A sub-path deploy (GitHub Pages serves this repo under /cargolinx/) needs every asset and
 // manifest reference to carry the base, or the app loads a blank screen. Default stays root.
 const BASE = process.env.VITE_BASE || "/";
 
+const DEMO_POLICY = fileURLToPath(new URL("./src/policy-values.demo.mjs", import.meta.url));
+
 export default defineConfig({
   base: BASE,
+  resolve: {
+    alias: [
+      // The public demo ships sample policy settings. The operator's figures live in
+      // engine/policy-values.mjs and stay out of every bundle we publish.
+      { find: /^\.\/policy-values\.mjs$/, replacement: DEMO_POLICY },
+    ],
+  },
   plugins: [
     react(),
     VitePWA({
