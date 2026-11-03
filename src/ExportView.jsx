@@ -163,7 +163,7 @@ export default function ExportView() {
       </section>
 
       <section className="card">
-        <h2>Export build-up — priced to the destination port</h2>
+        <h2>Export build-up — priced to {port}, Kenya side</h2>
         <p className="muted">
           What the desk can see: the goods, the inland leg to the port, the export papers, the ocean freight and the
           insurance. What it will not do is guess the destination's import duty, its port charges or its clearing
