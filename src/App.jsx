@@ -572,7 +572,7 @@ function NewShipment({ onCreated, model }) {
         waiver,
         dossier,
         services: { clearing: num(form.clearing), transport: num(form.transport), lastMile: num(form.lastMile) },
-        marginPct: 0.3,
+        marginPct: POLICY.targetMargin,
         photoId,
         cargoRead: read,
         note,
@@ -773,7 +773,7 @@ function QuoteView({ shipment, shipments, onPick, onChange, model, user }) {
   if (!lc) return <section className="card"><h2>Quote</h2><p className="hint">This record has no cost data yet — pick another shipment.</p></section>;
 
   const floor = floorPrice(lc, POLICY.minMargin);
-  const margin = shipment.marginPct ?? 0.3;
+  const margin = shipment.marginPct ?? POLICY.targetMargin;
   let q = null;
   let quoteError = "";
   try {

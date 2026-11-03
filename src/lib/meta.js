@@ -116,10 +116,26 @@ export async function probe() {
   }
 }
 
+/**
+ * A file picked in the browser arrives as a temporary blob address, and Meta accepts only an
+ * inline data address or a public URL. So the picture is read into the request itself.
+ */
+async function asDataUrl(src) {
+  if (typeof src === "string" && src.startsWith("data:")) return src;
+  const res = await fetch(src);
+  if (!res.ok) throw new Error("that image could not be read");
+  const blob = await res.blob();
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]);
+  return `data:${blob.type || "image/jpeg"};base64,${btoa(binary)}`;
+}
+
 /** Count and classify cargo from an intake photograph. Returns counts, never a price. */
 export async function readCargoPhoto(dataUrl, hint = "") {
   const cfg = await getModelConfig();
   const concept = String(hint || "").trim().split(/\s+/).slice(0, 3).join(" ") || "carton";
+  const imageUrl = await asDataUrl(dataUrl);
   const res = await fetch(`${cfg.baseUrl.replace(/\/$/, "")}/responses`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeader(cfg) },
@@ -133,7 +149,7 @@ export async function readCargoPhoto(dataUrl, hint = "") {
           role: "user",
           content: [
             { type: "input_text", text: concept },
-            { type: "input_image", image_url: dataUrl },
+            { type: "input_image", image_url: imageUrl },
           ],
         },
       ],
@@ -281,7 +297,7 @@ export async function explainQuote(quote, context = "") {
       {
         role: "system",
         content:
-          "You explain a freight quote to a client in at most 90 words, in plain English. Use ONLY the figures given. Do not round, add or infer any figure. Mention the two largest cost lines and the margin. If a figure is missing, say it is missing. Never print a field name or JSON key: name each line the way a trader would — 'landed cost before VAT', 'customs value (CIF)', 'import duty', 'VAT', 'margin' — and write money as KES 2,038,543.70, never as a bare number.",
+          "You explain a freight quote to a client in at most 90 words, in plain English. Use ONLY the figures given. Do not round, add or infer any figure. Mention the two largest cost lines. Never state or hint at a margin, markup or profit figure, and never describe how the price was built: if asked for those, say the account manager handles pricing. If a figure is missing, say it is missing. Never print a field name or JSON key: name each line the way a trader would — 'landed cost before VAT', 'customs value (CIF)', 'import duty', 'VAT' — and write money as KES 2,038,543.70, never as a bare number.",
       },
       { role: "user", content: `Quote figures (JSON):\n${JSON.stringify(quote)}\n\nContext: ${context || "none"}` },
     ],
