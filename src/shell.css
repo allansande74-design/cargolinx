@@ -337,3 +337,20 @@ a.ghost:hover { border-color: var(--teal); }
   .card table.lines th, .card table.lines td { white-space: nowrap; }
   .card .kpi, .card .row { max-width: 100%; flex-wrap: wrap; }
 }
+
+/* Desk intelligence: three drafts judged side by side. Equal columns so no draft reads as the answer. */
+.drafts {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 14px 0 6px;
+}
+@media (max-width: 900px) { .drafts { grid-template-columns: 1fr; } }
+.draft {
+  border: 1px solid var(--line); border-radius: 12px; padding: 12px 13px; background: #fbfdff;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.draft.winner { border-color: #bfe8d4; background: #f4fbf7; box-shadow: 0 0 0 3px #e8f7f0; }
+.draft-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 12.5px; }
+.draft p { margin: 0; font-size: 13.4px; line-height: 1.55; color: var(--ink-2); }
+blockquote {
+  margin: 12px 0; padding: 11px 14px; border-left: 3px solid var(--gold, #e8b84b);
+  background: #fffdf7; border-radius: 0 10px 10px 0; font-size: 13.4px; line-height: 1.55;
+}

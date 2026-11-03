@@ -23,6 +23,7 @@ import { startCount, applyCount, writeOff, shrinkageReport, WRITE_OFF_REASONS } 
 import { list as listPlugins, status as pluginStatus, configure as configurePlugin, dryRun, supports as pluginSupports, get as getPlugin } from "../engine/plugins.mjs";
 import NetworkView from "./NetworkView.jsx";
 import ExportView from "./ExportView.jsx";
+import IntelView from "./IntelView.jsx";
 import Deadlines from "./Deadlines.jsx";
 import { POLICY, assessQuote } from "../engine/pricing-policy.mjs";
 import DashboardHub from "./dashboards/hub.jsx";
@@ -203,6 +204,7 @@ function Desk({ onSignOut }) {
         {tab === "compliance" && <ComplianceView shipment={selected} shipments={shipments} onPick={setSelectedId} onChange={refresh} />}
         {tab === "deadlines" && <Deadlines />}
         {tab === "export" && <ExportView />}
+        {tab === "intel" && <IntelView />}
         {tab === "source" && <SourcingView />}
         {tab === "orders" && <OrdersView user={user} accounts={accounts} />}
         {tab === "money" && <MoneyView user={user} accounts={accounts} />}
@@ -236,6 +238,7 @@ const NAV = [
   ] },
   { title: "Trade", items: [
     ["export", "Export desk", "globe"],
+    ["intel", "Intelligence", "spark"],
     ["source", "Sourcing", "globe"],
     ["suppliers", "Suppliers", "box"],
     ["orders", "Orders", "list"],
@@ -254,6 +257,7 @@ const NAV = [
 
 const PAGE = {
   new: { title: "New shipment", sub: "Capture the cargo once; the quote, documents and tracking all read from it." },
+  intel: { title: "Desk intelligence", sub: "The nine models on the account, three drafts judged in parallel, and the agents the workflow trusts." },
   export: { title: "Export desk", sub: "The same lanes the other way round, priced to the destination port — with the destination duty named as missing rather than guessed." },
   quote: { title: "Quotes & pricing", sub: "Landed-cost ladder and customer quote, computed locally from dated statutory rates." },
   track: { title: "Tracking & proof of delivery", sub: "Status events, photos and signatures held against the shipment." },
@@ -278,6 +282,7 @@ const ICONS = {
   file: <><path d="M14 3v5h5" /><path d="M19 8.5V21H5V3h9l5 5.5Z" /><path d="M8.5 13h7M8.5 16.5h4.5" /></>,
   pin: <><path d="M12 21s7-6.1 7-11a7 7 0 1 0-14 0c0 4.9 7 11 7 11Z" /><circle cx="12" cy="10" r="2.6" /></>,
   shield: <><path d="M12 3l7 3v6c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6l7-3Z" /><path d="M9 12l2 2 4-4" /></>,
+  spark: <><path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4L12 3Z" /><path d="M18.5 16.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2Z" /></>,
   globe: <><circle cx="12" cy="12" r="9" /><path d="M3.5 9h17M3.5 15h17" /><path d="M12 3c2.6 2.6 4 5.7 4 9s-1.4 6.4-4 9c-2.6-2.6-4-5.7-4-9s1.4-6.4 4-9Z" /></>,
   box: <><path d="M3 8l9-5 9 5v8l-9 5-9-5V8Z" /><path d="M3 8l9 5 9-5M12 13v8" /></>,
   list: <><path d="M8 6h13M8 12h13M8 18h13" /><path d="M3.5 6h.01M3.5 12h.01M3.5 18h.01" /></>,

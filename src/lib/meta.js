@@ -121,6 +121,52 @@ async function call(path, body, { timeoutMs = 45000 } = {}) {
   return send(retried, timeoutMs);
 }
 
+/**
+ * Six of the account's models do the desk's work; two more are reachable and were never given a job
+ * until this screen. These two helpers let one screen fan a question out to every Spark generation at
+ * once, put the answers in front of Muse Wonder to judge, and ask Muse Image for a picture.
+ *
+ * They add no arithmetic and no authority: a judge may choose better words, never a different price.
+ */
+export async function askModel(model, prompt, { maxTokens = 600, effort } = {}) {
+  const body = {
+    model,
+    messages: [{ role: "user", content: prompt }],
+    max_tokens: maxTokens,
+  };
+  if (effort) body.reasoning_effort = effort;
+  const started = performance.now();
+  const payload = await call("/chat/completions", body, { timeoutMs: 60000 });
+  const ms = Math.round(performance.now() - started);
+  const text = (payload?.choices?.[0]?.message?.content ?? "").trim();
+  return { model, text, ms, tokens: payload?.usage?.total_tokens ?? null };
+}
+
+/** Muse Image answers only on the responses route, and returns the picture as a base64 blob. */
+export async function illustrate(prompt) {
+  const cfg = await getModelConfig();
+  if (!cfg.baseUrl) throw new ModelUnavailable("No Meta model endpoint is configured.");
+  const started = performance.now();
+  const res = await fetch(`${cfg.baseUrl.replace(/\/$/, "")}/responses`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeader(cfg) },
+    body: JSON.stringify({ model: MODELS.image, input: prompt, max_output_tokens: 400 }),
+  });
+  if (!res.ok) throw new Error(`model endpoint ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  const payload = await res.json();
+  const call = (payload?.output ?? []).find((o) => o?.type === "image_generation_call" && o?.result);
+  if (!call) throw new Error("the image model answered without a picture");
+  const bytes = atob(call.result);
+  const head = bytes.slice(0, 4);
+  const mime = head.startsWith("RIFF") ? "image/webp" : head.startsWith("\x89PNG") ? "image/png" : "image/jpeg";
+  return {
+    model: MODELS.image,
+    ms: Math.round(performance.now() - started),
+    url: `data:${mime};base64,${call.result}`,
+    tokens: payload?.usage?.total_tokens ?? null,
+  };
+}
+
 /** Is the model layer usable right now? Called on boot; never throws. */
 export async function probe() {
   const cfg = await getModelConfig();
