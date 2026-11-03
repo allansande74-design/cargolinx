@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DreamTeQ — document verification</title>
+<style>
+  :root { --navy:#0b101d; --gold:#d4af37; --ink:#1b1d27; --muted:#6b7280; --line:#e5e7eb; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+         color:var(--ink); background:#faf8f4; }
+  header { background:var(--navy); color:#fff; padding:26px 22px 22px; border-top:6px solid var(--gold); }
+  .wrap { max-width:720px; margin:0 auto; }
+  header .brand { font-weight:700; font-size:20px; letter-spacing:.2px; }
+  header .sub { color:var(--gold); font-size:11px; letter-spacing:1.6px; margin-top:4px; }
+  header h1 { font-size:22px; margin:22px 0 4px; font-weight:700; }
+  header p { margin:0; color:#c7cbd6; font-size:14px; }
+  main { padding:26px 22px 60px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:20px; margin-bottom:18px; }
+  .verdict { display:flex; align-items:center; gap:12px; font-weight:700; font-size:18px; }
+  .dot { width:14px; height:14px; border-radius:50%; background:#d1d5db; flex:none; }
+  .ok .dot { background:#12915a; } .bad .dot { background:#b42318; } .wait .dot { background:#b8860b; }
+  .ok { color:#0f7a4c; } .bad { color:#b42318; } .wait { color:#8a6d1f; }
+  dl { display:grid; grid-template-columns:132px 1fr; gap:10px 14px; margin:16px 0 0; font-size:14px; }
+  dt { color:var(--muted); }
+  dd { margin:0; word-break:break-all; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:13px; }
+  .btn { display:inline-block; margin-top:6px; background:var(--navy); color:#fff; text-decoration:none;
+         padding:13px 20px; border-radius:10px; font-weight:600; }
+  .btn.gold { background:var(--gold); color:#1b1d27; }
+  .muted { color:var(--muted); font-size:13px; }
+  .checks { list-style:none; padding:0; margin:14px 0 0; font-size:14px; }
+  .checks li { padding:7px 0; border-bottom:1px dashed var(--line); display:flex; justify-content:space-between; gap:12px; }
+  .checks li:last-child { border-bottom:0; }
+  footer { color:var(--muted); font-size:12px; text-align:center; padding:0 22px 40px; }
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <div class="brand">DreamTeQ</div>
+  <div class="sub">DREAMTEAM CONSULTING COMPANY · DOCUMENT SUITE v5.0</div>
+  <h1>Document verification</h1>
+  <p>Scan-verified copy. This page recomputes the fingerprint of the document in your browser.</p>
+</div></header>
+
+<main class="wrap">
+  <div class="card">
+    <div id="verdict" class="verdict wait"><span class="dot"></span><span id="verdict-text">Checking…</span></div>
+    <dl>
+      <dt>Document</dt><dd id="title">—</dd>
+      <dt>Document ID</dt><dd id="docid">—</dd>
+      <dt>Issued</dt><dd id="issued">—</dd>
+      <dt>Recorded SHA-256</dt><dd id="digest">—</dd>
+      <dt>Classification</dt><dd id="klass">—</dd>
+    </dl>
+    <ul class="checks" id="checks"></ul>
+  </div>
+
+  <div class="card">
+    <p style="margin:0 0 12px"><strong>Download the copy</strong></p>
+    <a class="btn gold" id="dl" href="#" download>Download the PDF</a>
+    <p class="muted" style="margin:12px 0 0">The fingerprint above is computed from the document itself, not from this page. If the file you download produces the same value, the copy is unaltered.</p>
+  </div>
+</main>
+
+<footer>
+  Dreamteam Consulting Company (DreamTeQ), Nairobi, Kenya · dreamteamconsult@gmx.com · +254 718 554 383<br>
+  SOP-DOC-001 · records signed with SHA-256 over the document manifest
+</footer>
+
+<script>
+(async () => {
+  const id = new URLSearchParams(location.search).get('id') || 'DTQ-CLX-SS-2026-11-03-R2';
+  const v = document.getElementById('verdict');
+  const vt = document.getElementById('verdict-text');
+  const say = (cls, text) => { v.className = 'verdict ' + cls; vt.textContent = text; };
+  const row = (label, ok, extra) => {
+    const li = document.createElement('li');
+    li.innerHTML = `<span>${label}</span><span class="${ok ? 'ok' : 'bad'}">${ok ? 'match' : 'MISMATCH'}${extra ? ' · ' + extra : ''}</span>`;
+    document.getElementById('checks').appendChild(li);
+  };
+  const hex = buf => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+  const sha = async buf => hex(await crypto.subtle.digest('SHA-256', buf));
+
+  try {
+    const rec = await (await fetch(`${id}.json`, { cache: 'no-store' })).json();
+    document.getElementById('title').textContent = rec.title;
+    document.getElementById('docid').textContent = rec.id;
+    document.getElementById('issued').textContent = rec.issued;
+    document.getElementById('digest').textContent = rec.digest;
+    document.getElementById('klass').textContent = rec.classification;
+    const a = document.getElementById('dl');
+    a.href = rec.file; a.setAttribute('download', rec.file);
+
+    const manifest = await (await fetch(rec.manifest, { cache: 'no-store' })).text();
+    const manifestHash = await sha(new TextEncoder().encode(manifest));
+    row('Manifest fingerprint', manifestHash === rec.digest);
+
+    const pdf = await (await fetch(rec.file, { cache: 'no-store' })).arrayBuffer();
+    const pdfHash = await sha(pdf);
+    row('PDF file fingerprint', pdfHash === rec.file_sha256, `${(pdf.byteLength / 1048576).toFixed(2)} MB`);
+
+    const ok = manifestHash === rec.digest && pdfHash === rec.file_sha256;
+    say(ok ? 'ok' : 'bad', ok ? 'Verified — this copy matches the record' : 'Not verified — this copy differs from the record');
+  } catch (e) {
+    say('bad', 'Verification failed: ' + e.message);
+  }
+})();
+</script>
+</body>
+</html>
