@@ -51,7 +51,9 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,html,svg,png,jpg,woff2,webmanifest}"],
+        // "mjs" matters: pdf.js loads its worker as a .mjs module, and a worker that was never
+        // precached turns "read this rate card offline" into a spinner in a warehouse with no signal.
+        globPatterns: ["**/*.{js,mjs,css,html,svg,png,jpg,woff2,webmanifest}"],
         navigateFallback: BASE + "index.html",
         // the film page lives beside the app; without this the service worker answers a
         // navigation to /cargolinx/demo/ with the app shell and the video never appears

@@ -7,7 +7,7 @@
   },
   "private": true,
   "type": "module",
-  "description": "CargoLinx v2 \u2014 offline-first freight quoting and tracking for East African corridors.",
+  "description": "CargoLinx v2 — offline-first freight quoting and tracking for East African corridors.",
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 5173",
     "build": "vite build",
@@ -16,6 +16,7 @@
     "quote": "node cli/quote.mjs"
   },
   "dependencies": {
+    "pdfjs-dist": "^4.10.38",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

@@ -10,6 +10,7 @@
  * It must never fall back to invented output.
  */
 import { kvGet, kvSet } from "./db.js";
+import { fileText } from "./doctext.mjs";
 
 export const MODELS = {
   reason: "muse-spark-1.3",
@@ -438,29 +439,59 @@ export async function matchLane(job, lanes) {
  * as evidence; the desk's own costing is untouched.
  * Returns {fields, servedBy}.
  */
-const DOC_TYPES = [".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".csv", ".txt", ".html", ".htm"];
+const DOC_TYPES = [".pdf", ".txt", ".csv", ".tsv", ".md", ".json", ".html", ".htm"];
 
 export function isReadableDocument(name) {
   const lower = String(name || "").toLowerCase();
   return DOC_TYPES.some((t) => lower.endsWith(t));
 }
 
-function fileToB64(file) {
-  return new Promise((ok, bad) => {
-    const fr = new FileReader();
-    fr.onload = () => ok(String(fr.result).split(",")[1]);
-    fr.onerror = bad;
-    fr.readAsDataURL(file);
-  });
+/** The sheet asks for a compact object and nothing else; a rate card is not a paragraph of prose. */
+export const DOC_PROMPT =
+  "Read the document text and return one JSON object, no prose and no code fences, with these keys: " +
+  "cargo, quantity, weightKg, origin, destination, hs, value, currency, comments. " +
+  "Use exactly what the document states; use null for anything it does not state. Never estimate a " +
+  "weight, a value or an HS code that is not written down. quantity and weightKg are numbers when the " +
+  "document gives a number. comments carries the document's own wording about validity, surcharges or " +
+  "conditions, copied, not summarised. If the same figure appears several times, use the one the " +
+  "document calls the total.";
+
+function jsonFrom(text) {
+  const cleaned = String(text || "")
+    .replace(/^```(?:json)?/i, "")
+    .replace(/```\s*$/, "")
+    .trim();
+  const first = cleaned.indexOf("{");
+  const last = cleaned.lastIndexOf("}");
+  if (first === -1 || last <= first) throw new Error("the model did not return a readable field set");
+  return JSON.parse(cleaned.slice(first, last + 1));
 }
 
+/**
+ * A document the operator already has - a rate card, a quotation, a packing list.
+ *
+ * The text is lifted in the browser (see doctext.mjs) and only the text is sent, so the supplier's file
+ * is never uploaded. The model is told to copy what is written and to leave a field null rather than
+ * estimate: a guessed weight becomes a wrong freight charge that nobody can trace back to a document.
+ */
 export async function readDocument(file) {
-  const cfg = await getModelConfig();
-  if (!cfg.baseUrl || !cfg.apiKey) throw new ModelUnavailable("No model endpoint is configured. Set it in Settings first.");
-  const out = await call("/v1/documents/extract", {
-    name: file.name,
-    mime: file.type || "application/octet-stream",
-    data_b64: await fileToB64(file),
-  }, { timeoutMs: 120000 });
-  return { fields: out.fields ?? {}, servedBy: out?.bridge?.served_by ?? "meta:direct" };
+  const { text, empty, pages } = await fileText(file);
+  if (empty) {
+    throw new Error(
+      `${file.name} has no text layer - it is a scan, and this build reads words, not pictures of words. ` +
+        "Photograph it instead, or send the original PDF.",
+    );
+  }
+  const out = await call("/chat/completions", {
+    model: MODELS.reason,
+    max_tokens: 800,
+    temperature: 0,
+    messages: [
+      { role: "system", content: DOC_PROMPT },
+      { role: "user", content: `Document: ${file.name}\n\n${text.slice(0, 12000)}` },
+    ],
+  });
+  const content = out?.choices?.[0]?.message?.content || "";
+  const fields = jsonFrom(content);
+  return { fields, pages, servedBy: out?.model || MODELS.reason };
 }
