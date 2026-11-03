@@ -427,7 +427,10 @@ function NewShipment({ onCreated, model }) {
     setErr("");
     if (!photoUrl) return setErr("Attach a photograph first.");
     try {
-      const out = await readCargoPhoto(photoUrl, `${form.cargo} ${form.origin} to ${form.destination}`);
+      // The concept has to be the thing in the picture. A lane name matches nothing on a pallet,
+      // so the cargo field leads and a plain "pallet" is the honest default when it is empty.
+      const concept = String(form.cargo || "").trim() || "pallet";
+      const out = await readCargoPhoto(photoUrl, concept);
       setRead(out);
     } catch (e) {
       setErr(e.message);

@@ -74,6 +74,7 @@ test("a picked photo is sent inline, because a temporary browser address is refu
     const body = JSON.parse(init.body);
     const imageUrl = body.input[0].content[1].image_url;
     assert.match(imageUrl, /^data:image\/jpeg;base64,/);
+    assert.equal(body.input[0].content[0].text, "pallet");
     return new Response('data: {"type":"response.output_text.delta","delta":"<|box;x1=1;y1=2;x2=3;y2=4;"}\n', {
       status: 200, headers: { "content-type": "text/event-stream" },
     });
