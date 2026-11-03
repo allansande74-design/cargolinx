@@ -52,6 +52,8 @@ export default function AmandaBar({ contextHint = "", country = "KE", lang = "en
 
   return (
     <div
+      role="region"
+      aria-label="Ask Amanda"
       style={{
         position: "fixed",
         left: 0,

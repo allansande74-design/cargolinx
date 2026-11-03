@@ -689,7 +689,7 @@ function NewShipment({ onCreated, model }) {
 
       <h3>Intake — photograph, document and note</h3>
       <div className="row">
-        <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={pickPhoto} style={{ maxWidth: 260 }} />
+        <input ref={fileRef} type="file" accept="image/*" capture="environment" aria-label="Photograph of the cargo" onChange={pickPhoto} style={{ maxWidth: 260 }} />
         <button className="ghost" onClick={readPhoto} disabled={!photoUrl}>
           Count cargo from photo
         </button>
@@ -704,7 +704,7 @@ function NewShipment({ onCreated, model }) {
       )}
 
       <div className="row" style={{ marginTop: 8 }}>
-        <input ref={docRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,.html,.htm" onChange={readDocFile} style={{ maxWidth: 260 }} />
+        <input ref={docRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,.html,.htm" aria-label="Supplier quotation or packing list" onChange={readDocFile} style={{ maxWidth: 260 }} />
         <span className="hint">{docBusy ? "Reading document…" : "Attach a supplier quotation — the desk reads it into the fields."}</span>
       </div>
       {docName && (
