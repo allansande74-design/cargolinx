@@ -157,6 +157,7 @@ What is verified:
 - [x] `.gitignore` excludes `node_modules/` and `dist/`, so neither build output nor installed
       dependencies reach the repository.
 - [x] A licence is in the tree — MIT in `LICENSE` (© 2026 Allan Sande, Altovex Global Logistics), named in the Licence section above.
+- [x] `docs/OPERATIONS.md` is the page you read at 2 a.m.: how to tell the desk is up (`/api/health`), where faults land (`/api/errors` and `wrangler tail`), how to deploy and roll back, how to rotate the Meta key, and — written down rather than hidden — the five gaps that remain.
 - [x] `docs/CONTRIBUTION.md` records what was built, what is measured, and what is explicitly not
       claimed.
 - [x] The Meta model layer is live direct: muse-spark-1.3 and muse-wonder-1.0 answer on
