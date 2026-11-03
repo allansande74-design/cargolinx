@@ -11,6 +11,7 @@ import { country, integrationState, expressReadiness, COUNTRY_EXTRAS } from "../
 import { createAccount, createUser, can, assertCan, scoped, documentHeader, creditDecision, ROLES } from "../engine/accounts.mjs";
 import { createOrder, advance, nextStage, blockersFor, receiveGoods, dispatch as dispatchOrder, deliver as deliverOrder, slaState, STAGES as ORDER_STAGES, ORDER_TYPES } from "../engine/orders.mjs";
 import { config as loconavConfig, probe as loconavProbe, parseWebhook, trackingState, LOCONAV } from "../engine/loconav.mjs";
+import { LANES, exportLaneRows } from "../engine/lanes.mjs";
 import { parseSpec, compareOffers, dropshipDecision, rfqDraft, landedPerUnit } from "../engine/sourcing.mjs";
 import { buildInvoice, recordPayment, ageing, creditExposure, nextInvoiceNumber } from "../engine/invoicing.mjs";
 import { receiveLot, stockPosition, allocate as allocateStock, pickList, availabilityStatement, binName } from "../engine/inventory.mjs";
@@ -21,6 +22,7 @@ import { purchaseOrderHtml } from "./lib/supplier-docs.mjs";
 import { startCount, applyCount, writeOff, shrinkageReport, WRITE_OFF_REASONS } from "../engine/inventory-ops.mjs";
 import { list as listPlugins, status as pluginStatus, configure as configurePlugin, dryRun, supports as pluginSupports, get as getPlugin } from "../engine/plugins.mjs";
 import NetworkView from "./NetworkView.jsx";
+import ExportView from "./ExportView.jsx";
 import Deadlines from "./Deadlines.jsx";
 import { POLICY, assessQuote } from "../engine/pricing-policy.mjs";
 import DashboardHub from "./dashboards/hub.jsx";
@@ -31,27 +33,6 @@ import AmandaBar from "./AmandaBar.jsx";
 const money = (n, ccy = "KES") =>
   `${ccy} ${Number(n || 0).toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const num = (v) => (v === "" || v === null ? 0 : Number(v));
-
-const LANES = {
-  "Mombasa - Kampala": [
-    { name: "Mombasa - Nairobi", km: 485, speedKph: 50 },
-    { name: "Nairobi - Eldoret", km: 320, speedKph: 55 },
-    { name: "Eldoret - Malaba", km: 130, speedKph: 50, border: true },
-    { name: "Malaba - Kampala", km: 250, speedKph: 45 },
-  ],
-  "Nairobi - Kampala": [
-    { name: "Nairobi - Eldoret", km: 320, speedKph: 55 },
-    { name: "Eldoret - Malaba", km: 130, speedKph: 50, border: true },
-    { name: "Malaba - Kampala", km: 250, speedKph: 45 },
-  ],
-  "Mombasa - Nairobi": [{ name: "Mombasa - Nairobi", km: 485, speedKph: 50 }],
-  "Nairobi - Kigali": [
-    { name: "Nairobi - Eldoret", km: 320, speedKph: 55 },
-    { name: "Eldoret - Malaba", km: 130, speedKph: 50, border: true },
-    { name: "Malaba - Kampala", km: 250, speedKph: 45 },
-    { name: "Kampala - Kigali", km: 510, speedKph: 50, border: true },
-  ],
-};
 
 const DUTY_BANDS = [
   { v: 0, label: "0% — raw materials, capital goods" },
@@ -219,6 +200,7 @@ function Desk({ onSignOut }) {
         {tab === "track" && <TrackView shipment={selected} shipments={shipments} onPick={setSelectedId} onChange={refresh} />}
         {tab === "compliance" && <ComplianceView shipment={selected} shipments={shipments} onPick={setSelectedId} onChange={refresh} />}
         {tab === "deadlines" && <Deadlines />}
+        {tab === "export" && <ExportView />}
         {tab === "source" && <SourcingView />}
         {tab === "orders" && <OrdersView user={user} accounts={accounts} />}
         {tab === "money" && <MoneyView user={user} accounts={accounts} />}
@@ -251,6 +233,7 @@ const NAV = [
     ["deadlines", "Deadlines", "clock"],
   ] },
   { title: "Trade", items: [
+    ["export", "Export desk", "globe"],
     ["source", "Sourcing", "globe"],
     ["suppliers", "Suppliers", "box"],
     ["orders", "Orders", "list"],
@@ -269,6 +252,7 @@ const NAV = [
 
 const PAGE = {
   new: { title: "New shipment", sub: "Capture the cargo once; the quote, documents and tracking all read from it." },
+  export: { title: "Export desk", sub: "The same lanes the other way round, priced to the destination port — with the destination duty named as missing rather than guessed." },
   quote: { title: "Quotes & pricing", sub: "Landed-cost ladder and customer quote, computed locally from dated statutory rates." },
   track: { title: "Tracking & proof of delivery", sub: "Status events, photos and signatures held against the shipment." },
   deadlines: { title: "Deadlines", sub: "Every assignment on a clock: countdown to the promise, milestone calendar and the T-7 / T-3 / T-1 / T-0 client report." },

@@ -156,6 +156,8 @@ What is verified:
 - [x] `npm test` invokes `node --test`, and `npm run build` invokes `vite build`.
 - [x] `.gitignore` excludes `node_modules/` and `dist/`, so neither build output nor installed
       dependencies reach the repository.
+- Export runs the same lanes backwards: the lane table is reversed rather than retyped, and the quote stops at
+  the destination port with the destination's duty printed as missing rather than guessed. See `docs/EXPORT.md`.
 - [x] A licence is in the tree — MIT in `LICENSE` (© 2026 Allan Sande, Altovex Global Logistics), named in the Licence section above.
 - A photograph of the load becomes a *condition note* a claims clerk can file: what is visible and where, with cause, names and money refused by instruction. 
 - [x] `docs/ROUTING.md` answers the question the matcher does not: in what order a vehicle visits its stops. Exact under nine stops, Clarke–Wright with 2-opt and or-opt above that — measured at 6.8% shorter than an unaided order at six stops and 14.7% at forty, with a 0.00% gap to the provable optimum wherever the optimum is knowable.
