@@ -12,7 +12,7 @@ import { parseRange, isMediaPath } from "./byte-range.mjs";
 
 const MEDIA_HEADERS = {
   "accept-ranges": "bytes",
-  "cache-control": "public, max-age=31536000, immutable",
+  "cache-control": "public, max-age=600",
 };
 
 export default {
