@@ -53,6 +53,18 @@ export async function setModelConfig(cfg) {
   return next;
 }
 
+/**
+ * Muse Spark reasons before it writes, and at default effort it can spend an entire allowance
+ * thinking and return an empty answer. Low effort still reasons; it just leaves room to reply.
+ * No other model is touched, and an effort chosen by a caller wins.
+ */
+export function withReasoningEffort(body) {
+  const model = String(body?.model ?? "");
+  if (!model.startsWith("muse-spark")) return body;
+  if (body.reasoning_effort) return body;
+  return { ...body, reasoning_effort: "low" };
+}
+
 async function call(path, body, { timeoutMs = 45000 } = {}) {
   const cfg = await getModelConfig();
   if (!cfg.baseUrl) {
@@ -64,7 +76,7 @@ async function call(path, body, { timeoutMs = 45000 } = {}) {
     const res = await fetch(`${cfg.baseUrl.replace(/\/$/, "")}${path}`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeader(cfg) },
-      body: JSON.stringify(body),
+      body: JSON.stringify(withReasoningEffort(body)),
       signal: ctrl.signal,
     });
     if (!res.ok) {

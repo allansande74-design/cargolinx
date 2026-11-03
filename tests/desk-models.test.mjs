@@ -3,7 +3,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { probe } from "../src/lib/meta.js";
+import { probe, withReasoningEffort } from "../src/lib/meta.js";
 
 const answer = (body, type = "application/json", status = 200) => {
   globalThis.fetch = async () => new Response(typeof body === "string" ? body : JSON.stringify(body), {
@@ -45,4 +45,21 @@ test("a refused call is reported as off, with the status", async () => {
   const out = await probe();
   assert.equal(out.live, false);
   assert.match(out.reason, /401/);
+});
+
+test("Spark is asked to reason lightly so it has room to answer", () => {
+  const out = withReasoningEffort({ model: "muse-spark-1.3", messages: [] });
+  assert.equal(out.reasoning_effort, "low");
+  assert.deepEqual(out.messages, []);
+});
+
+test("an effort chosen by the caller is left alone", () => {
+  const out = withReasoningEffort({ model: "muse-spark-1.3", reasoning_effort: "high" });
+  assert.equal(out.reasoning_effort, "high");
+});
+
+test("no other model is given an effort it may not understand", () => {
+  for (const model of ["sam-3.1", "muse-wonder-1.0", "muse-image-1.0"]) {
+    assert.equal(withReasoningEffort({ model }).reasoning_effort, undefined);
+  }
 });
