@@ -18,6 +18,7 @@ const laneNames = Object.keys(LANES);
 const kmOf = (name) => (LANES[name] ?? []).reduce((n, leg) => n + (Number(leg.km) || 0), 0);
 
 async function askOne(model, prompt) {
+  const started = performance.now();
   const res = await fetch("/api/meta/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -28,7 +29,6 @@ async function askOne(model, prompt) {
       reasoning_effort: "minimal",
     }),
   });
-  const started = performance.now();
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     return { model, text: "", ms: 0, error: `HTTP ${res.status} ${body.slice(0, 120)}` };
@@ -49,6 +49,9 @@ async function judge(drafts) {
     }),
   });
   const payload = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(payload?.error?.message ?? `the judge answered HTTP ${res.status}`);
+  }
   return (payload?.choices?.[0]?.message?.content ?? "").trim();
 }
 

@@ -12,6 +12,8 @@ const UPSTREAM = "https://api.meta.ai/v1";
 /** Models the desk may use. Contributor models are excluded by policy, not by accident. */
 const ALLOWED = new Set([
   "muse-spark-1.3",
+  "muse-spark-1.2",
+  "muse-spark-1.1",
   "muse-wonder-1.0",
   "sam-3.1",
   "muse-voice-transcribe-1.0",

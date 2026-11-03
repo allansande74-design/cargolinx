@@ -106,3 +106,11 @@ test("an audio form naming a model we do not own is refused", async () => {
   assert.equal(res.status, 400);
   assert.equal(calls.length, 0);
 });
+
+test("the three Spark generations are allowed, and a contributor model is still refused", async () => {
+  for (const id of ["muse-spark-1.3", "muse-spark-1.2", "muse-spark-1.1"]) {
+    assert.equal(__testing.ALLOWED.has(id), true, `${id} must be allowed: the fan-out asks all three`);
+  }
+  assert.equal(__testing.ALLOWED.has("muse-spark-1.3-contributor"), false);
+  assert.equal(__testing.ALLOWED.has("muse-spark-1.2-contributor"), false);
+});
