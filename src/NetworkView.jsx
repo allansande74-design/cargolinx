@@ -12,6 +12,8 @@ import { PORTS, SEA_LANES, INLAND_LEGS, FACTORY_GATES, planInternational, replan
 import { VEHICLE_CLASSES, matchVehicle, splitShipment, costEstimate, capacityCheck, CORRIDORS as FLEET_CORRIDORS } from "../engine/fleet.mjs";
 import * as partners from "../engine/partners.mjs";
 import * as tracking from "../engine/tracking.mjs";
+import { buildMatrix, nearestNeighbourRoute, planVehicleDay, routeLength } from "../engine/route.mjs";
+import { findPlace, stopsFromOrders } from "./lib/places.mjs";
 import * as dispatch from "../engine/dispatch.mjs";
 
 const kes = (n) => (typeof n === "number" ? `KES ${n.toLocaleString("en-KE", { maximumFractionDigits: 0 })}` : "—");
@@ -217,6 +219,19 @@ export default function NetworkView() {
   });
   const [dResult, setDResult] = useState(null);
   const [dError, setDError] = useState("");
+
+  // The day's stops, in the order that covers the least ground. Computed from what is actually
+  // waiting in this browser, so the answer changes when a load is added or dispatched.
+  const dayPlan = useMemo(() => {
+    const { stops, unplaced } = stopsFromOrders(dOrders, { defaultWeightKg: Number(dForm.weightKg) || 500 });
+    if (stops.length < 2) return { plan: null, unplaced, baselineKm: null, savedPct: 0 };
+    const depot = findPlace("Industrial Area");
+    const matrix = buildMatrix([depot, ...stops]);
+    const baselineKm = routeLength(nearestNeighbourRoute(stops, matrix), matrix);
+    const plan = planVehicleDay(depot, stops, { capacityKg: 8000 });
+    const savedPct = plan.distanceKm > 0 ? Number((100 * (1 - plan.distanceKm / baselineKm)).toFixed(1)) : 0;
+    return { plan, unplaced, baselineKm: Number(baselineKm.toFixed(2)), savedPct };
+  }, [dOrders, dForm.weightKg]);
 
   useEffect(() => {
     (async () => {
@@ -688,6 +703,45 @@ export default function NetworkView() {
             </ul>
             <p className="muted">The tracking panel above accepts this reference — report departure, gate-in and load events against it.</p>
           </div>
+        )}
+      </section>
+
+      <section className="card">
+        <h2>Day plan</h2>
+        <p className="muted">
+          Every order waiting to move, put in the order that covers the least ground. Under nine stops the order is the
+          shortest one that exists; above that, a savings construction improved until nothing shortens it. Distances are
+          straight-line kilometres between area centres — a planning proxy, not turn-by-turn routing.
+        </p>
+        {!dayPlan.plan && (
+          <p className="hint">
+            Two or more ready orders with a recognised destination are needed to plan a day.
+            {dayPlan.unplaced.length > 0 ? ` No known area for ${dayPlan.unplaced.join(", ")} — add the town to the address.` : ""}
+          </p>
+        )}
+        {dayPlan.plan && (
+          <>
+            <ol>
+              {dayPlan.plan.stops.map((stop) => (
+                <li key={stop.id}>{stop.label} <span className="muted">· {stop.id}</span></li>
+              ))}
+            </ol>
+            <p>
+              <strong>{dayPlan.plan.distanceKm} km</strong> for {dayPlan.plan.stops.length} stops carrying{" "}
+              {dayPlan.plan.loadKg.toLocaleString("en-KE")} kg. Nearest-stop-first would be {dayPlan.baselineKm} km
+              {dayPlan.savedPct > 0.5 ? ` — this order is ${dayPlan.savedPct}% shorter.` : "."}
+            </p>
+            {dayPlan.plan.unplanned.length > 0 && (
+              <ul>
+                {dayPlan.plan.unplanned.map((skip) => (
+                  <li key={skip.id}>{skip.id} left behind: {skip.reason}</li>
+                ))}
+              </ul>
+            )}
+            {dayPlan.unplaced.length > 0 && (
+              <p className="hint">No known area for {dayPlan.unplaced.join(", ")} — add the town to the address.</p>
+            )}
+          </>
         )}
       </section>
 
