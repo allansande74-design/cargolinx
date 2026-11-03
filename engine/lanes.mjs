@@ -141,3 +141,88 @@ export function reverseShipment(shipment, lanes = LANES) {
     reason: lane ? null : `No lane runs ${from || "?"} to ${to || "?"} in the desk's table, so no distance is claimed.`,
   };
 }
+
+/* ------------------------------------------------------------------ the sea leg, on to China */
+
+/**
+ * Imported goods come from China; an export to China runs the whole corridor the other way, inland to
+ * Mombasa and then across the water. The sea distance is computed rather than typed: great circle between
+ * the two ports, plus a routing allowance for the fact that a ship does not sail the straight line.
+ *
+ * What is deliberately not here is a carrier's transit time or a freight rate. Sea days are the passage
+ * at a stated speed and exclude port calls, canal and berthing - a service's own quoted transit is longer,
+ * and the operator types that in. No Chinese duty is quoted at all: the desk holds no Chinese tariff.
+ */
+export const ROUTING_FACTOR = 1.15;
+export const SERVICE_KNOTS = 16;
+
+export const CHINA_PORTS = Object.freeze({
+  Shanghai: { country: "CN", lat: 31.2304, lon: 121.4737 },
+  Ningbo: { country: "CN", lat: 29.8683, lon: 121.544 },
+  Shenzhen: { country: "CN", lat: 22.5431, lon: 114.0579 },
+  Guangzhou: { country: "CN", lat: 22.75, lon: 113.6 },
+  Tianjin: { country: "CN", lat: 38.98, lon: 117.7 },
+});
+
+export const MOMBASA = { country: "KE", lat: -4.0435, lon: 39.6682 };
+
+/** Great-circle distance in nautical miles. */
+export function greatCircleNm(a, b) {
+  const R = 3440.065;
+  const rad = (d) => (d * Math.PI) / 180;
+  const dLat = rad(b.lat - a.lat);
+  const dLon = rad(b.lon - a.lon);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+/** The planning sea distance: the straight line plus the routing allowance. */
+export function planningNm(a, b, factor = ROUTING_FACTOR) {
+  return greatCircleNm(a, b) * factor;
+}
+
+/** Sea passage at the stated service speed, in days; excludes port calls, canal and berthing. */
+export function seaDays(nm, knots = SERVICE_KNOTS) {
+  return nm / (knots * 24);
+}
+
+/**
+ * An export corridor: a reversed inland lane, then the sea leg to a Chinese port. The two halves keep
+ * their own units - kilometres on the road, nautical miles at sea - because adding them would produce a
+ * number that means nothing.
+ */
+export function corridorToChina(laneName, portName, lanes = LANES, ports = CHINA_PORTS) {
+  const direct = laneName ? lanes[laneName] : null;
+  const inland = direct
+    ? reverseLane(direct)
+    : laneBetween(...String(laneName || "").split(" - "), lanes)?.legs ?? null;
+  const port = ports[portName];
+  if (!inland) return null;
+  if (!port) return null;
+  const nm = planningNm(MOMBASA, port);
+  return {
+    laneName,
+    portName,
+    legs: inland,
+    inlandKm: Math.round(laneKm(inland)),
+    drivingHours: Math.round(laneHours(inland) * 10) / 10,
+    borders: borderCount(inland),
+    nm: Math.round(nm),
+    seaDays: Math.round(seaDays(nm) * 10) / 10,
+    greatCircleNm: Math.round(greatCircleNm(MOMBASA, port)),
+  };
+}
+
+/** The same corridor read from the other end: China to the Kenyan port. */
+export function chinaLaneRows(ports = CHINA_PORTS) {
+  return Object.entries(ports).map(([name, port]) => {
+    const nm = planningNm(MOMBASA, port);
+    return {
+      name: `Mombasa - ${name}`,
+      nm: Math.round(nm),
+      greatCircleNm: Math.round(greatCircleNm(MOMBASA, port)),
+      seaDays: Math.round(seaDays(nm) * 10) / 10,
+      country: port.country,
+    };
+  });
+}

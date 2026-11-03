@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { exportLaneRows, reverseName, reverseShipment } from "../engine/lanes.mjs";
+import { exportLaneRows, reverseName, reverseShipment, corridorToChina, chinaLaneRows, CHINA_PORTS } from "../engine/lanes.mjs";
 import { all, STORES } from "./lib/db.js";
 
 /**
@@ -23,9 +23,12 @@ const num = (v) => (v === "" || v === null || v === undefined ? 0 : Number(v));
 export default function ExportView() {
   const [rest, setRest] = useState(0);
   const [lane, setLane] = useState("Kampala - Mombasa");
+  const [port, setPort] = useState("Shanghai");
 
   const rows = useMemo(() => exportLaneRows(undefined, { restHours: num(rest) }), [rest]);
   const chosen = rows.find((r) => r.name === lane) ?? rows[0];
+  const corridor = corridorToChina(lane, port);
+  const sea = chinaLaneRows();
 
   const [carried, setCarried] = useState([]);
   const [pick, setPick] = useState("");
@@ -160,7 +163,7 @@ export default function ExportView() {
       </section>
 
       <section className="card">
-        <h2>Export build-up — Kenya side, priced to the destination port</h2>
+        <h2>Export build-up — priced to the destination port</h2>
         <p className="muted">
           What the desk can see: the goods, the inland leg to the port, the export papers, the ocean freight and the
           insurance. What it will not do is guess the destination's import duty, its port charges or its clearing
@@ -187,11 +190,11 @@ export default function ExportView() {
             <tr><td>Goods, as declared</td><td>{money(calc.goods, "USD")}</td></tr>
             <tr><td>Ocean freight</td><td>{money(calc.freight, "USD")}</td></tr>
             <tr><td>Marine insurance at {Number(num(f.insurancePct)).toFixed(2)}% of goods plus freight</td><td>{money(calc.insurance, "USD")}</td></tr>
-            <tr style={{ fontWeight: 600 }}><td>CIF, destination port</td><td>{money(calc.cifUsd, "USD")}</td></tr>
+            <tr style={{ fontWeight: 600 }}><td>CIF, {port}</td><td>{money(calc.cifUsd, "USD")}</td></tr>
             <tr><td>Inland to port</td><td>{money(calc.inland)}</td></tr>
             <tr><td>Export papers and clearance</td><td>{money(calc.papers)}</td></tr>
             <tr><td>Kenya-side costs, in dollars at {calc.fx || "—"}</td><td>{money(calc.kenyaSideUsd, "USD")}</td></tr>
-            <tr style={{ fontWeight: 700 }}><td>Total to the destination port</td><td>{money(calc.totalUsd, "USD")} · {money(calc.totalKes)}</td></tr>
+            <tr style={{ fontWeight: 700 }}><td>Total to {port}</td><td>{money(calc.totalUsd, "USD")} · {money(calc.totalKes)}</td></tr>
             <tr><td className="hint">Destination duty, port charges and clearing</td><td className="hint">Not quoted — no destination tariff held</td></tr>
           </tbody>
         </table>
@@ -200,6 +203,57 @@ export default function ExportView() {
           A Kenyan export shipment pays no Kenyan import duty, which is why no duty line appears above. What the buyer
           pays on arrival is their own country's charge, and it is named as missing rather than filled with a guess.
         </p>
+      </section>
+
+
+      <section className="card">
+        <h2>…and on to China</h2>
+        <p className="muted">
+          Imports come from China, so the export corridor is the whole chain the other way: inland to Mombasa, then
+          across the water. The sea distance is computed from the two ports' coordinates — great circle plus a routing
+          allowance for the fact that a ship does not sail the straight line — and the passage is that distance at a
+          stated service speed.
+        </p>
+        <div className="row" style={{ marginBottom: 10 }}>
+          <label className="field">Chinese port
+            <select value={port} onChange={(e) => setPort(e.target.value)} aria-label="Chinese port">
+              {sea.map((p) => <option key={p.name} value={p.name.replace("Mombasa - ", "")}>{p.name.replace("Mombasa - ", "")}</option>)}
+            </select>
+          </label>
+          <label className="field">Inland lane
+            <select value={lane} onChange={(e) => setLane(e.target.value)} aria-label="Inland export lane">
+              {rows.map((r) => <option key={r.name} value={r.name}>{r.name}</option>)}
+            </select>
+          </label>
+        </div>
+        {corridor && (
+          <table className="lines">
+            <tbody>
+              <tr><td>Road: {corridor.laneName}</td><td>{corridor.inlandKm} km · {corridor.drivingHours} h · {corridor.borders} border{corridor.borders === 1 ? "" : "s"}</td></tr>
+              <tr><td>Sea: Mombasa to {port}</td><td>{corridor.nm.toLocaleString("en-KE")} nm planning distance · great circle {corridor.greatCircleNm.toLocaleString("en-KE")} nm</td></tr>
+              <tr><td>Sea passage at 16 knots</td><td>{corridor.seaDays.toFixed(1)} days</td></tr>
+              <tr style={{ fontWeight: 600 }}><td>Whole corridor, {corridor.laneName.split(" - ")[0]} to {port}</td><td>{corridor.inlandKm} km road, then {corridor.nm.toLocaleString("en-KE")} nm sea</td></tr>
+              <tr><td className="hint">Port calls, canal, berthing and the carrier's own transit</td><td className="hint">Not included — the service's quoted transit goes here</td></tr>
+              <tr><td className="hint">Chinese import duty and destination charges</td><td className="hint">Not quoted — no Chinese tariff held</td></tr>
+            </tbody>
+          </table>
+        )}
+        <p className="hint" style={{ marginTop: 8 }}>
+          Kilometres on the road and nautical miles at sea are kept apart on purpose: adding them would give a number
+          that means nothing. China's import duty is named as missing, for the same reason the destination port duty
+          is on the build-up above.
+        </p>
+        <details style={{ marginTop: 10 }}>
+          <summary className="hint">Every Chinese port the desk measures ({sea.length})</summary>
+          <table className="lines" style={{ marginTop: 8 }}>
+            <thead><tr><th>Port</th><th>Planning nm</th><th>Great circle</th><th>Sea days at 16 kn</th></tr></thead>
+            <tbody>
+              {sea.map((p) => (
+                <tr key={p.name}><td>{p.name}</td><td>{p.nm.toLocaleString("en-KE")}</td><td>{p.greatCircleNm.toLocaleString("en-KE")}</td><td>{p.seaDays.toFixed(1)}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </details>
       </section>
 
       <section className="card">
