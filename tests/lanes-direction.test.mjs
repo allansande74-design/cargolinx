@@ -5,6 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   LANES, reverseName, reverseLeg, reverseLane, laneKm, laneHours, borderCount, lanesBothWays, exportLaneRows,
+  laneBetween, reverseShipment,
 } from "../engine/lanes.mjs";
 
 test("a lane name turns round, and a name without a dash is left alone", () => {
@@ -54,4 +55,31 @@ test("the export table carries the reversed route and the same kilometres", () =
   assert.equal(kampala.km, 1185);
   assert.equal(kampala.borders, 1);
   assert.match(kampala.route, /^Kampala - Malaba · Malaba - Eldoret/);
+});
+
+test("a lane is found by the two ends, whatever the casing and spacing", () => {
+  assert.equal(laneBetween("Mombasa", "Kampala")?.name, "Mombasa - Kampala");
+  assert.equal(laneBetween("  mombasa ", "KAMPALA")?.name, "Mombasa - Kampala");
+  assert.equal(laneBetween("Kampala", "Mombasa")?.name, "Kampala - Mombasa", "the reverse comes from the same lane turned round");
+  assert.equal(laneBetween("Kisumu", "Kampala"), null);
+});
+
+test("a carried load reads back the other way, with the distance it would really run", () => {
+  const job = { id: "clx_1", origin: "Mombasa", destination: "Kampala", cargo: "Solar panels", weightKg: 900, value: { goods: 18500 } };
+  const rev = reverseShipment(job);
+  assert.equal(rev.asCarried, "Mombasa → Kampala");
+  assert.equal(rev.reversed, "Kampala → Mombasa");
+  assert.equal(rev.laneName, "Kampala - Mombasa");
+  assert.equal(rev.km, 1185);
+  assert.equal(rev.hours, 23.7);
+  assert.equal(rev.cargo, "Solar panels");
+  assert.equal(rev.goodsUsd, 18500);
+  assert.equal(rev.reason, null);
+});
+
+test("a pair with no lane says so, and claims no distance", () => {
+  const rev = reverseShipment({ id: "clx_2", origin: "Kisumu", destination: "Kampala", cargo: "Fish" });
+  assert.equal(rev.laneName, null);
+  assert.equal(rev.km, null);
+  assert.match(rev.reason, /No lane runs Kampala to Kisumu/);
 });

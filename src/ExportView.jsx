@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from "react";
-import { exportLaneRows, reverseName } from "../engine/lanes.mjs";
+import React, { useEffect, useMemo, useState } from "react";
+import { exportLaneRows, reverseName, reverseShipment } from "../engine/lanes.mjs";
+import { all, STORES } from "./lib/db.js";
 
 /**
  * The export desk.
@@ -25,6 +26,18 @@ export default function ExportView() {
 
   const rows = useMemo(() => exportLaneRows(undefined, { restHours: num(rest) }), [rest]);
   const chosen = rows.find((r) => r.name === lane) ?? rows[0];
+
+  const [carried, setCarried] = useState([]);
+  const [pick, setPick] = useState("");
+  useEffect(() => {
+    let live = true;
+    all(STORES.shipments)
+      .then((rows) => { if (live) setCarried((rows ?? []).slice(0, 40)); })
+      .catch(() => { if (live) setCarried([]); });
+    return () => { live = false; };
+  }, []);
+  const chosenLoad = carried.find((s) => s.id === pick) ?? null;
+  const rev = chosenLoad ? reverseShipment(chosenLoad) : null;
 
   const [f, setF] = useState({
     goodsUsd: 18500,
@@ -98,6 +111,52 @@ export default function ExportView() {
           The symmetry stops at the border. An export declaration is lodged in Kenya <em>before</em> the truck reaches
           the post; an import entry is lodged after it. The lane is the same length either way — the paperwork is not.
         </p>
+      </section>
+
+      <section className="card">
+        <h2>A load you already carried, read the other way</h2>
+        <p className="muted">
+          Pick a job the desk already holds. Its two ends swap and the lane is looked up by name in the same table, so
+          the answer is the road it would run back and how long it is — not a guess at a new route.
+        </p>
+        {carried.length === 0 ? (
+          <p className="hint">No shipments on this desk yet. Create one under New shipment, then come back.</p>
+        ) : (
+          <>
+            <label className="field">Job
+              <select value={pick} onChange={(e) => setPick(e.target.value)} aria-label="Job to read the other way">
+                <option value="">Choose a job…</option>
+                {carried.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {(s.ref || s.id).toString().slice(0, 18)} · {s.origin} → {s.destination} · {s.cargo}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {rev && (
+              <>
+                <table className="lines" style={{ marginTop: 10 }}>
+                  <tbody>
+                    <tr><td>As carried</td><td>{rev.asCarried}</td></tr>
+                    <tr style={{ fontWeight: 600 }}><td>Read the other way</td><td>{rev.reversed}</td></tr>
+                    <tr><td>Cargo on the record</td><td>{rev.cargo || "—"}{rev.weightKg ? ` · ${rev.weightKg} kg` : ""}</td></tr>
+                    <tr><td>Lane</td><td>{rev.laneName ?? "none in the table"}</td></tr>
+                    <tr><td>Distance and driving</td><td>{rev.km == null ? "not claimed" : `${rev.km} km · ${rev.hours} h at planning speeds · ${rev.borders} border${rev.borders === 1 ? "" : "s"}`}</td></tr>
+                  </tbody>
+                </table>
+                {rev.reason && <p className="warning">{rev.reason}</p>}
+                {rev.laneName && (
+                  <div className="row" style={{ marginTop: 10 }}>
+                    <button type="button" onClick={() => { setLane(rev.laneName); if (rev.goodsUsd) setF((prev) => ({ ...prev, goodsUsd: rev.goodsUsd })); }}>
+                      Use this lane in the build-up
+                    </button>
+                    <span className="hint">Cargo and money stay as the export quote states them; only the lane and the goods value move across.</span>
+                  </div>
+                )}
+              </>
+            )}
+          </>
+        )}
       </section>
 
       <section className="card">

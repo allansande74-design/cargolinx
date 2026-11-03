@@ -97,3 +97,47 @@ export function exportLaneRows(lanes = LANES, { restHours = 0 } = {}) {
     route: legs.map((l) => l.name).join(" · "),
   }));
 }
+
+/* ------------------------------------------------------------------ reversing a shipment */
+
+const key = (s) => String(s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+
+/** The lane that runs from one place to another, by the lane table's own names. */
+export function laneBetween(from, to, lanes = LANES) {
+  const want = `${key(from)} - ${key(to)}`;
+  for (const [name, legs] of Object.entries(lanes)) {
+    if (key(name) === want) return { name, legs };
+  }
+  // The reverse direction is not a second entry in the table - it is the same lane turned round.
+  for (const [name, legs] of Object.entries(lanes)) {
+    if (key(reverseName(name)) === want) return { name: reverseName(name), legs: reverseLane(legs) };
+  }
+  return null;
+}
+
+/**
+ * A shipment as the desk holds it, read the other way.
+ *
+ * The point is not to invent an export order out of an import one - the cargo, the parties and the money
+ * change - but to answer the question an operator actually asks: "if this load were going back, which lane
+ * would it run and how long is it?" So the two place names swap, the lane is looked up by name, and when
+ * no lane runs that way the answer says so instead of assembling a route from fragments.
+ */
+export function reverseShipment(shipment, lanes = LANES) {
+  const from = String(shipment?.destination ?? "").trim();
+  const to = String(shipment?.origin ?? "").trim();
+  const lane = from && to ? laneBetween(from, to, lanes) : null;
+  return {
+    id: shipment?.id ?? null,
+    asCarried: `${shipment?.origin ?? "?"} → ${shipment?.destination ?? "?"}`,
+    reversed: `${from || "?"} → ${to || "?"}`,
+    laneName: lane?.name ?? null,
+    km: lane ? Math.round(laneKm(lane.legs)) : null,
+    hours: lane ? Math.round(laneHours(lane.legs) * 10) / 10 : null,
+    borders: lane ? borderCount(lane.legs) : null,
+    cargo: shipment?.cargo ?? "",
+    weightKg: Number(shipment?.weightKg) || 0,
+    goodsUsd: Number(shipment?.value?.goods) || 0,
+    reason: lane ? null : `No lane runs ${from || "?"} to ${to || "?"} in the desk's table, so no distance is claimed.`,
+  };
+}

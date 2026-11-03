@@ -27,6 +27,15 @@ The build-up therefore stops at the destination port: goods, ocean freight, mari
 and export papers make up the CIF figure and the Kenya-side costs. Destination duty is printed as missing.
 A guessed duty would follow the container all the way to a customer, so the desk refuses to guess it.
 
+## Reading a carried job the other way
+
+`reverseShipment()` swaps the two ends of a shipment the desk already holds, looks the lane up by name in the
+same table (`laneBetween()`, which turns the import lane round rather than keeping a second entry), and returns
+the distance, the driving hours and the border count — or a sentence saying no lane runs that way, with no
+distance claimed. The Export desk offers this as a picker: choose a job, see it read backwards, then press
+*Use this lane in the build-up* to move the lane and the goods value across. Cargo and money stay as the
+export quote states them; nothing is copied that a quote should not inherit.
+
 ## Where a judge sees it
 
 Desk → **Trade → Export desk**. Two cards and a table:
@@ -36,5 +45,5 @@ Desk → **Trade → Export desk**. Two cards and a table:
   the destination duty row naming what is not included;
 - a plain statement of what reverses and what does not.
 
-The lane numbers are measured by `tests/lanes-direction.test.mjs` (seven tests: naming, leg preservation,
+The lane numbers are measured by `tests/lanes-direction.test.mjs` (ten tests: naming, leg preservation,
 reverse-twice identity, hours, one export lane per import lane, 1,185 km on Kampala - Mombasa).
