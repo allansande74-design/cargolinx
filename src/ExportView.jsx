@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { exportLaneRows, reverseName, reverseShipment, corridorToChina, chinaLaneRows, CHINA_PORTS } from "../engine/lanes.mjs";
+import { CIF_SCOPE } from "../engine/incoterms.mjs";
 import { all, STORES } from "./lib/db.js";
 
 /**
@@ -195,7 +196,7 @@ export default function ExportView() {
             <tr><td>Export papers and clearance</td><td>{money(calc.papers)}</td></tr>
             <tr><td>Kenya-side costs, in dollars at {calc.fx || "—"}</td><td>{money(calc.kenyaSideUsd, "USD")}</td></tr>
             <tr style={{ fontWeight: 700 }}><td>Total to {port}</td><td>{money(calc.totalUsd, "USD")} · {money(calc.totalKes)}</td></tr>
-            <tr><td className="hint">Destination duty, port charges and clearing</td><td className="hint">Not quoted — no destination tariff held</td></tr>
+            <tr><td className="hint">Destination duty, port charges and clearing</td><td className="hint">Not ours under {CIF_SCOPE.term} — the importer clears and pays, and no Chinese tariff is held</td></tr>
           </tbody>
         </table>
 
@@ -205,6 +206,34 @@ export default function ExportView() {
         </p>
       </section>
 
+
+
+      <section className="card">
+        <h2>CIF {port} — where our obligation ends</h2>
+        <p className="muted">
+          The house term is {CIF_SCOPE.term}, {CIF_SCOPE.named}. The importer takes the goods off the quay and does the
+          inland leg, the processing and the last mile themselves, so nothing on their side is priced here.
+        </p>
+        <div className="grid">
+          <div>
+            <h3 style={{ fontSize: 15, margin: "6px 0" }}>On our side</h3>
+            <ul style={{ margin: 0, paddingLeft: 18, lineHeight: 1.55 }}>
+              {CIF_SCOPE.seller.map((item) => <li key={item}>{item}</li>)}
+            </ul>
+          </div>
+          <div>
+            <h3 style={{ fontSize: 15, margin: "6px 0" }}>On the importer's side</h3>
+            <ul style={{ margin: 0, paddingLeft: 18, lineHeight: 1.55 }}>
+              {CIF_SCOPE.buyer.map((item) => <li key={item}>{item}</li>)}
+            </ul>
+          </div>
+        </div>
+        <p className="hint" style={{ marginTop: 10 }}>
+          Two things CIF quietly does, and both are written into the quote rather than assumed: risk passes
+          {""} <strong>{CIF_SCOPE.riskPasses}</strong> — we are still paying freight after the buyer owns the risk — and the
+          cover is {CIF_SCOPE.insurance.toLowerCase()}.
+        </p>
+      </section>
 
       <section className="card">
         <h2>…and on to China</h2>
@@ -234,7 +263,7 @@ export default function ExportView() {
               <tr><td>Sea passage at 16 knots</td><td>{corridor.seaDays.toFixed(1)} days</td></tr>
               <tr style={{ fontWeight: 600 }}><td>Whole corridor, {corridor.laneName.split(" - ")[0]} to {port}</td><td>{corridor.inlandKm} km road, then {corridor.nm.toLocaleString("en-KE")} nm sea</td></tr>
               <tr><td className="hint">Port calls, canal, berthing and the carrier's own transit</td><td className="hint">Not included — the service's quoted transit goes here</td></tr>
-              <tr><td className="hint">Chinese import duty and destination charges</td><td className="hint">Not quoted — no Chinese tariff held</td></tr>
+              <tr><td className="hint">Chinese import duty, port charges, inland and processing</td><td className="hint">The importer’s under {CIF_SCOPE.term} — not quoted here</td></tr>
             </tbody>
           </table>
         )}

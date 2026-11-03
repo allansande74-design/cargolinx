@@ -47,3 +47,21 @@ Desk → **Trade → Export desk**. Two cards and a table:
 
 The lane numbers are measured by `tests/lanes-direction.test.mjs` (ten tests: naming, leg preservation,
 reverse-twice identity, hours, one export lane per import lane, 1,185 km on Kampala - Mombasa).
+
+## The quote is issued on CIF, and the importer takes the rest
+
+The house term for an export to China is **CIF, named Chinese port**. `engine/incoterms.mjs` holds the scope
+list once, so the page and the tests read the same words:
+
+- **Altovex:** collection and inland haulage to Mombasa, the export declaration and papers, ocean freight to
+  the named port, and marine insurance at Institute Cargo Clauses (C), 110% of invoice value.
+- **Importer:** Chinese import clearance, any Chinese duty or VAT, destination port charges, inland haulage
+  and inland processing in China, last-mile delivery and unloading.
+
+Two things CIF does quietly, and both are written into the quote rather than left to memory. Risk passes
+**on board at Mombasa**, not at the Chinese quay — we are still paying the freight after the buyer owns the
+risk. And the cover CIF requires is Clauses (C), which excludes more than most buyers assume; (A) is priced
+on request instead of being given away.
+
+`isImporterCost()` exists so a Chinese duty can never drift into our stack: the importer pays it, and the
+desk holds no Chinese tariff to price it from.
