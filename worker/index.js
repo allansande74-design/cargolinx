@@ -9,6 +9,7 @@
 // the total size is taken from the buffer we read rather than from headers.
 
 import { parseRange, isMediaPath } from "./byte-range.mjs";
+import { handle as handleMeta } from "./meta-proxy.mjs";
 
 const MEDIA_HEADERS = {
   "accept-ranges": "bytes",
@@ -18,6 +19,12 @@ const MEDIA_HEADERS = {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+
+    // The desk's model calls land here first: the credential lives in this Worker's secrets, never
+    // in the bundle a phone downloads.
+    if (url.pathname === "/api/meta" || url.pathname.startsWith("/api/meta/")) {
+      return handleMeta(request, env);
+    }
 
     if (request.method !== "GET" && request.method !== "HEAD") {
       return env.ASSETS.fetch(request);

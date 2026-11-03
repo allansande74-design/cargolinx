@@ -298,3 +298,29 @@ a.ghost:hover { border-color: var(--teal); }
 }
 
 .served { color: var(--muted); font-size: 12px; opacity: .8; }
+
+
+/* ---- phone finish: finger-sized targets, readable labels, no clipped composer ---- */
+@media (max-width: 980px) {
+  .navgroup { overflow-x: auto; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .navgroup::-webkit-scrollbar { display: none; }
+  .navitem { min-height: 44px; display: inline-flex; align-items: center; scroll-snap-align: start; }
+  .navitem span.lbl { overflow: visible; text-overflow: clip; }
+}
+
+@media (max-width: 700px) {
+  .navitem { padding: 10px 14px; font-size: 13.5px; }
+  /* keep the fixed composer from sitting on top of the last card */
+  .content, main { padding-bottom: 96px; }
+}
+
+@media (max-width: 520px) {
+  .amandabar-label { display: none; }
+}
+
+@media (max-width: 700px) {
+  /* every action is a finger target, not a mouse one */
+  button.primary, button.ghost, .btn { min-height: 44px; }
+  /* the page can always be scrolled clear of the fixed composer */
+  #root { padding-bottom: 88px; }
+}

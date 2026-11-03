@@ -4,7 +4,7 @@
 The job was rejected before its first step (2 seconds, zero steps, no runner assigned, no log
 blob) and the cause sits above this repository — account-level runner availability, not the
 workflow and not the code. It was verified separately that the same commit installs, tests
-(449 passing) and builds cleanly on a plain Linux machine.
+(457 passing) and builds cleanly on a plain Linux machine.
 
 So the checks moved off GitHub:
 

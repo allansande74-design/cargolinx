@@ -67,14 +67,15 @@ export default function AmandaBar({ contextHint = "", country = "KE", lang = "en
         onSubmit={onSubmit}
         style={{ display: "flex", gap: 8, maxWidth: 900, margin: "0 auto", alignItems: "center" }}
       >
-        <span style={{ color: GOLD, fontWeight: 700, whiteSpace: "nowrap" }}>Amanda · {c.currency}</span>
+        <span className="amandabar-label" style={{ color: GOLD, fontWeight: 700, whiteSpace: "nowrap" }}>Amanda · {c.currency}</span>
         <input
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           placeholder={greet}
           aria-label="Ask Amanda"
           style={{
-            flex: 1,
+            flex: "1 1 140px",
+            minWidth: 0,
             padding: "8px 10px",
             borderRadius: 6,
             border: `1px solid ${GOLD}`,
@@ -86,7 +87,8 @@ export default function AmandaBar({ contextHint = "", country = "KE", lang = "en
           type="submit"
           disabled={busy || !question.trim()}
           style={{
-            padding: "8px 16px",
+            padding: "10px 18px",
+            minHeight: 44,
             borderRadius: 6,
             border: "none",
             background: busy ? "#8a7a3a" : GOLD,

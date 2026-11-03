@@ -1,0 +1,47 @@
+{
+ "project": "CargoLinx v2 — Autonomous African Cross-Border Freight Orchestrator",
+ "hackathon": "Meta Global AI Developer Hackathon 2026",
+ "verified_at_utc": "2026-11-03T11:46:50Z",
+ "verified_at_eat": "2026-11-03T14:46:50+03:00",
+ "endpoint": "https://api.meta.ai/v1",
+ "data": "demo only — a published rate table, one synthetic voice note, one stock cargo photograph (used locally, not redistributed)",
+ "credential": "held as a Worker secret named META_API_KEY; the desk calls its own /api/meta route and the browser holds no key",
+ "tasks_verified": [
+  {
+   "task": "rate schedule",
+   "model": "muse-spark-1.3",
+   "status": "HTTP_200_OK",
+   "latency_ms": 9384,
+   "usage": {"prompt_tokens": 377, "completion_tokens": 1188, "reasoning_tokens": 961, "cached_tokens": 369},
+   "result": "valid JSON; five days, one departure each; every rate, cutoff and transit day exactly as given"
+  },
+  {
+   "task": "voice note",
+   "model": "muse-voice-transcribe-1.0",
+   "status": "HTTP_200_OK",
+   "latency_ms": 3922,
+   "audio_ms": 12400,
+   "endpoint_path": "/v1/asr/transcribe",
+   "result": "transcript returned with turn timings; every spoken element present — 12 pallets, dry cartons, Industrial Area to Nakuru depot, ready tomorrow"
+  },
+  {
+   "task": "cargo photo — pallets",
+   "model": "sam-3.1",
+   "status": "HTTP_200_OK",
+   "latency_ms": 2293,
+   "endpoint_path": "/v1/responses (stream)",
+   "result": "15 matches, each a box and a mask"
+  },
+  {
+   "task": "cargo photo — cartons",
+   "model": "sam-3.1",
+   "status": "HTTP_200_OK",
+   "latency_ms": 1106,
+   "endpoint_path": "/v1/responses (stream)",
+   "result": "64 matches, each a box and a mask"
+  }
+ ],
+ "spend_usd": 0.0159,
+ "spend_basis": "Meta published rates: Muse Spark $1.25 input / $4.25 output / $0.15 cached per million tokens; Muse Voice Transcribe $0.18 per audio hour; SAM 3.1 $2.50 per 1,000 images. Two Spark calls, one 12.4 s transcript, two segmentations. No balance carried; drawn against free credit.",
+ "guards": "worker/meta-proxy.mjs admits five models, refuses contributor models, caps output at 1,200 tokens, and limits one address to 40 calls per ten minutes; eight tests in tests/meta-proxy.test.mjs"
+}
