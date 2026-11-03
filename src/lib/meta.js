@@ -65,28 +65,59 @@ export function withReasoningEffort(body) {
   return { ...body, reasoning_effort: "low" };
 }
 
+/**
+ * Spark thinks before it writes, and the thinking is charged to the same budget as the answer. On a
+ * long thought the cap runs out mid-reasoning and the reply arrives as HTTP 200 with no words in it -
+ * measured at 700 tokens one minute and answered at 700 the next, so the fault is variance, not size.
+ * The desk therefore never sends Spark less than a working budget, and if a reply still comes back
+ * wordless it asks once more with room to think. Wasted calls cost fractions of a cent; a blank
+ * answer in front of a judge costs the demonstration.
+ */
+const SPARK_FLOOR = 1000;
+const SPARK_RETRY = 1600;
+
+function budgetFor(body) {
+  if (!String(body?.model || "").startsWith("muse-spark")) return body;
+  const asked = Number(body.max_tokens) || 0;
+  if (asked >= SPARK_FLOOR) return body;
+  return { ...body, max_tokens: SPARK_FLOOR };
+}
+
+function isWordless(payload) {
+  const choice = payload?.choices?.[0];
+  if (!choice) return false;
+  const content = choice?.message?.content;
+  return !(typeof content === "string" && content.trim());
+}
+
 async function call(path, body, { timeoutMs = 45000 } = {}) {
   const cfg = await getModelConfig();
   if (!cfg.baseUrl) {
     throw new ModelUnavailable("No Meta model endpoint is configured. The engine still quotes and tracks; model-assisted steps are disabled.");
   }
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), timeoutMs);
-  try {
-    const res = await fetch(`${cfg.baseUrl.replace(/\/$/, "")}${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...authHeader(cfg) },
-      body: JSON.stringify(withReasoningEffort(body)),
-      signal: ctrl.signal,
-    });
-    if (!res.ok) {
-      const text = (await res.text()).slice(0, 300);
-      throw new Error(`model endpoint ${res.status}: ${text}`);
+  const send = async (payload, ms) => {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), ms);
+    try {
+      const res = await fetch(`${cfg.baseUrl.replace(/\/$/, "")}${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeader(cfg) },
+        body: JSON.stringify(withReasoningEffort(payload)),
+        signal: ctrl.signal,
+      });
+      if (!res.ok) {
+        const text = (await res.text()).slice(0, 300);
+        throw new Error(`model endpoint ${res.status}: ${text}`);
+      }
+      return res.json();
+    } finally {
+      clearTimeout(t);
     }
-    return res.json();
-  } finally {
-    clearTimeout(t);
-  }
+  };
+  const first = await send(budgetFor(body), timeoutMs);
+  if (!isWordless(first)) return first;
+  const retried = { ...budgetFor(body), max_tokens: SPARK_RETRY };
+  return send(retried, timeoutMs);
 }
 
 /** Is the model layer usable right now? Called on boot; never throws. */

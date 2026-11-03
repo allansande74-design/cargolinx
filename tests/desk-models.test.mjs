@@ -3,7 +3,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { probe, withReasoningEffort, readCargoPhoto, explainQuote, conceptsFrom } from "../src/lib/meta.js";
+import { probe, withReasoningEffort, readCargoPhoto, explainQuote, conceptsFrom, conditionNote } from "../src/lib/meta.js";
 
 const answer = (body, type = "application/json", status = 200) => {
   globalThis.fetch = async () => new Response(typeof body === "string" ? body : JSON.stringify(body), {
@@ -124,4 +124,42 @@ test("a blank first answer falls through to the next concept", async () => {
   assert.equal(out.totalCount, 1);
   assert.equal(out.concept, "carton");
   assert.match(out.notes, /asked for "dry cartons" first/);
+});
+
+test("Spark is never given a budget too small to answer in", async () => {
+  const seen = [];
+  globalThis.fetch = async (url, init = {}) => {
+    seen.push(JSON.parse(init.body).max_tokens);
+    return new Response(JSON.stringify({ model: "muse-spark-1.3", choices: [{ message: { content: "answered" } }] }), {
+      status: 200, headers: { "content-type": "application/json" },
+    });
+  };
+  await conditionNote("data:image/jpeg;base64,AAAA");
+  assert.ok(seen[0] >= 1000, `asked for ${seen[0]} tokens`);
+  assert.equal(seen.length, 1, "a real answer is not retried");
+});
+
+test("a wordless reply is asked again with room to think, and the second answer is used", async () => {
+  let n = 0;
+  const budgets = [];
+  globalThis.fetch = async (url, init = {}) => {
+    const body = JSON.parse(init.body);
+    budgets.push(body.max_tokens);
+    n += 1;
+    const content = n === 1 ? "" : "Second time, with words.";
+    return new Response(JSON.stringify({ model: "muse-spark-1.3", choices: [{ message: { content }, finish_reason: n === 1 ? "length" : "stop" }] }), {
+      status: 200, headers: { "content-type": "application/json" },
+    });
+  };
+  const out = await conditionNote("data:image/jpeg;base64,AAAA");
+  assert.equal(out.text, "Second time, with words.");
+  assert.deepEqual(budgets, [1000, 1600]);
+});
+
+test("a blank twice is reported blank rather than pretended", async () => {
+  globalThis.fetch = async () => new Response(JSON.stringify({ model: "muse-spark-1.3", choices: [{ message: { content: "" } }] }), {
+    status: 200, headers: { "content-type": "application/json" },
+  });
+  const out = await conditionNote("data:image/jpeg;base64,AAAA");
+  assert.equal(out.text, "");
 });
