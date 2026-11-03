@@ -324,3 +324,16 @@ a.ghost:hover { border-color: var(--teal); }
   /* the page can always be scrolled clear of the fixed composer */
   #root { padding-bottom: 88px; }
 }
+
+/* ---- a wide cost table scrolls inside its card, never the page ----
+   On a phone the itemised ladder is wider than the screen; letting the card grow pushed the price and the
+   explanation off to the right, so a judge on a phone saw a clipped quote. The table now scrolls within the
+   card and the page itself keeps its width. */
+@media (max-width: 780px) {
+  html, body, #root { max-width: 100%; overflow-x: hidden; }
+  .card { max-width: 100%; overflow-x: hidden; }
+  .card table.lines { display: block; width: 100%; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .card table.lines > thead, .card table.lines > tbody { display: table; width: 100%; min-width: 460px; }
+  .card table.lines th, .card table.lines td { white-space: nowrap; }
+  .card .kpi, .card .row { max-width: 100%; flex-wrap: wrap; }
+}
