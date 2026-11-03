@@ -22,10 +22,23 @@ test("every demonstration job runs on a lane the desk can price", () => {
   }
 });
 
-test("no demonstration job carries a client, a person, an address or a price", () => {
+test("no demonstration job carries a client, a person, an address or a currency", () => {
   const text = JSON.stringify(DEMO_JOBS);
-  assert.doesNotMatch(text, /@/)
+  assert.doesNotMatch(text, /@/);
   assert.doesNotMatch(text, /\+254/);
   assert.doesNotMatch(text, /KES|USD/);
   assert.doesNotMatch(text, /Ltd|Limited|Company/i);
+});
+
+// A sample job missing its services block crashed the quote screen: reading shipment.services.clearing
+// on an incomplete record took the whole desk to "This screen stopped working".
+test("every demonstration job carries the fields the quote screen reads", () => {
+  for (const job of DEMO_JOBS) {
+    assert.equal(typeof job.value?.goods, "number", `${job.ref} has no goods value`);
+    assert.equal(typeof job.value?.freight, "number", `${job.ref} has no freight value`);
+    for (const k of ["clearing", "transport", "lastMile"]) {
+      assert.equal(typeof job.services?.[k], "number", `${job.ref} has no services.${k}`);
+    }
+    assert.equal(typeof job.dutyRate, "number", `${job.ref} has no duty band`);
+  }
 });

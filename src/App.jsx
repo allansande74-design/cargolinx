@@ -747,9 +747,11 @@ function QuoteView({ shipment, shipments, onPick, onChange, model, user }) {
       goods: shipment.value.goods,
       freight: shipment.value.freight,
       dutyRate: shipment.dutyRate,
-      clearing: shipment.services.clearing,
-      transport: shipment.services.transport,
-      lastMile: shipment.services.lastMile,
+      // A record written by an older build, or seeded as sample data, can lack the services block.
+      // Reading it blind is what took the whole desk down when the demo jobs arrived.
+      clearing: shipment.services?.clearing ?? 0,
+      transport: shipment.services?.transport ?? 0,
+      lastMile: shipment.services?.lastMile ?? 0,
       other: shipment.pvoc?.kes ?? 0,
       quantity: shipment.qty,
     });

@@ -96,9 +96,9 @@ export async function getPhoto(id) {
  * no address and no price.
  */
 export const DEMO_JOBS = [
-  { id: "clx_demo_1", ref: "CLX-DEMO-0001", origin: "Mombasa", destination: "Kampala", cargo: "Solar panels, boxed", qty: 12, weightKg: 900, status: "quoted" },
-  { id: "clx_demo_2", ref: "CLX-DEMO-0002", origin: "Mombasa", destination: "Nairobi", cargo: "Ceramic tiles, palletised", qty: 40, weightKg: 4500, status: "in transit" },
-  { id: "clx_demo_3", ref: "CLX-DEMO-0003", origin: "Nairobi", destination: "Kigali", cargo: "Packaged foods, cartons", qty: 160, weightKg: 1200, status: "quoted" },
+  { id: "clx_demo_1", ref: "CLX-DEMO-0001", origin: "Mombasa", destination: "Kampala", cargo: "Solar panels, boxed", qty: 12, weightKg: 900, status: "quoted", value: { goods: 18500, freight: 2900 }, services: { clearing: 0, transport: 0, lastMile: 0 }, dutyRate: 0 },
+  { id: "clx_demo_2", ref: "CLX-DEMO-0002", origin: "Mombasa", destination: "Nairobi", cargo: "Ceramic tiles, palletised", qty: 40, weightKg: 4500, status: "in transit", value: { goods: 9400, freight: 1100 }, services: { clearing: 0, transport: 0, lastMile: 0 }, dutyRate: 0.25 },
+  { id: "clx_demo_3", ref: "CLX-DEMO-0003", origin: "Nairobi", destination: "Kigali", cargo: "Packaged foods, cartons", qty: 160, weightKg: 1200, status: "quoted", value: { goods: 7600, freight: 1450 }, services: { clearing: 0, transport: 0, lastMile: 0 }, dutyRate: 0.1 },
 ];
 
 /** Write the demonstration jobs once, and never overwrite anything already on the desk. */
@@ -112,7 +112,6 @@ export async function seedDemoJobs(now = new Date()) {
       ...job,
       demo: true,
       note: "Demonstration job — sample data, not a client shipment.",
-      value: { goods: 0, freight: 0 },
       createdAt: stamp,
       updatedAt: stamp,
     };
