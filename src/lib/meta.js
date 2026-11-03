@@ -339,6 +339,44 @@ export async function explainQuote(quote, context = "") {
   return { text: out?.choices?.[0]?.message?.content ?? "", model: MODELS.reason };
 }
 
+/**
+ * A condition note for a claim file, from a photograph of the cargo.
+ *
+ * The hard part is not describing boxes; it is refusing to describe what a photograph cannot show.
+ * Cause, timing and who handled the load are exactly the things a claims clerk needs and a picture
+ * cannot supply, so the prompt forbids them and asks for an inspection instead. No names, no plates,
+ * no money, and the word margin never appears in the desk's cargo vocabulary.
+ */
+export const CONDITION_PROMPT =
+  "You write a cargo condition note for a claim file, in English, under 120 words. " +
+  "Describe only what is visible in the photograph: the cargo, its packaging, and any damage you can " +
+  "actually see, saying where on the load it is. Do not guess the cause, the time it happened, or who " +
+  "handled it — a photograph cannot establish any of those; when cause matters, say it needs a physical " +
+  "inspection. Do not name people, companies, vehicles or number plates. Do not mention price, cost, " +
+  "freight rates, margin or profit. If the cargo appears undamaged, say so plainly and stop. " +
+  "Plain sentences in one paragraph, no heading, no bullets, no field names.";
+
+export async function conditionNote(src, { reference = "" } = {}) {
+  const dataUrl = await asDataUrl(src);
+  const out = await call("/chat/completions", {
+    model: MODELS.reason,
+    max_tokens: 800,
+    temperature: 0.2,
+    messages: [
+      { role: "system", content: CONDITION_PROMPT },
+      {
+        role: "user",
+        content: [
+          { type: "text", text: reference ? `Shipment ${reference}. Write the condition note.` : "Write the condition note." },
+          { type: "image_url", image_url: { url: dataUrl } },
+        ],
+      },
+    ],
+  });
+  const text = (out?.choices?.[0]?.message?.content || "").trim();
+  return { text, model: out?.model || MODELS.reason };
+}
+
 /** Match a job to a lane using the operator's own lane list as the only source. */
 export async function matchLane(job, lanes) {
   const out = await call("/chat/completions", {

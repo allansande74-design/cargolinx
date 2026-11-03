@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { kvGet, kvSet, all, STORES, saveOrder } from "./lib/db.js";
 import {
   registerTruck, verifyTruckPapers, approveTruck, truckReadiness,
@@ -14,6 +14,7 @@ import * as partners from "../engine/partners.mjs";
 import * as tracking from "../engine/tracking.mjs";
 import { buildMatrix, nearestNeighbourRoute, planVehicleDay, routeLength } from "../engine/route.mjs";
 import { findPlace, stopsFromOrders } from "./lib/places.mjs";
+import { conditionNote } from "./lib/meta.js";
 import * as dispatch from "../engine/dispatch.mjs";
 
 const kes = (n) => (typeof n === "number" ? `KES ${n.toLocaleString("en-KE", { maximumFractionDigits: 0 })}` : "—");
@@ -219,6 +220,37 @@ export default function NetworkView() {
   });
   const [dResult, setDResult] = useState(null);
   const [dError, setDError] = useState("");
+
+  // A photograph of the load as it arrived, and a note a claims clerk can file.
+  const noteFile = useRef(null);
+  const [cnText, setCnText] = useState("");
+  const [cnBusy, setCnBusy] = useState(false);
+  const [cnError, setCnError] = useState("");
+
+  async function writeConditionNote() {
+    const file = noteFile.current?.files?.[0];
+    if (!file) {
+      setCnError("Attach a photograph of the cargo first.");
+      return;
+    }
+    setCnBusy(true);
+    setCnError("");
+    setCnText("");
+    try {
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error("that photograph could not be read"));
+        reader.readAsDataURL(file);
+      });
+      const out = await conditionNote(dataUrl, { reference: dPick || "" });
+      setCnText(out.text || "The model returned nothing. Write the note by hand rather than guess.");
+    } catch (err) {
+      setCnError(err?.message || String(err));
+    } finally {
+      setCnBusy(false);
+    }
+  }
 
   // The day's stops, in the order that covers the least ground. Computed from what is actually
   // waiting in this browser, so the answer changes when a load is added or dispatched.
@@ -703,6 +735,36 @@ export default function NetworkView() {
             </ul>
             <p className="muted">The tracking panel above accepts this reference — report departure, gate-in and load events against it.</p>
           </div>
+        )}
+      </section>
+
+      <section className="card">
+        <h2>Condition note</h2>
+        <p className="muted">
+          Photograph the load as it arrived and get a description a claims clerk can file: what is visible, where on the
+          load it is, and nothing else. The note will not guess a cause, name a person or company, or discuss money.
+        </p>
+        <div className="row">
+          <input
+            ref={noteFile}
+            type="file"
+            accept="image/*"
+            aria-label="Photograph of the cargo as received"
+            onChange={() => { setCnText(""); setCnError(""); }}
+          />
+          <button type="button" onClick={writeConditionNote} disabled={cnBusy}>
+            {cnBusy ? "Reading the photograph…" : "Write the condition note"}
+          </button>
+        </div>
+        {cnError && <p className="error">{cnError}</p>}
+        {cnText && (
+          <>
+            <textarea readOnly rows={6} value={cnText} aria-label="Condition note" />
+            <p className="hint">
+              Read it before it goes in a file. This is a demonstration workspace: use sample photographs, not a
+              client's claim.
+            </p>
+          </>
         )}
       </section>
 

@@ -157,6 +157,7 @@ What is verified:
 - [x] `.gitignore` excludes `node_modules/` and `dist/`, so neither build output nor installed
       dependencies reach the repository.
 - [x] A licence is in the tree — MIT in `LICENSE` (© 2026 Allan Sande, Altovex Global Logistics), named in the Licence section above.
+- A photograph of the load becomes a *condition note* a claims clerk can file: what is visible and where, with cause, names and money refused by instruction. 
 - [x] `docs/ROUTING.md` answers the question the matcher does not: in what order a vehicle visits its stops. Exact under nine stops, Clarke–Wright with 2-opt and or-opt above that — measured at 6.8% shorter than an unaided order at six stops and 14.7% at forty, with a 0.00% gap to the provable optimum wherever the optimum is knowable.
 - [x] `docs/OPERATIONS.md` is the page you read at 2 a.m.: how to tell the desk is up (`/api/health`), where faults land (`/api/errors` and `wrangler tail`), how to deploy and roll back, how to rotate the Meta key, and — written down rather than hidden — the five gaps that remain.
 - [x] `docs/CONTRIBUTION.md` records what was built, what is measured, and what is explicitly not
