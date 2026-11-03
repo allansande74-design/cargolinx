@@ -39,7 +39,12 @@ function authHeader(cfg) {
 }
 
 export async function getModelConfig() {
-  return { ...DEFAULTS, ...((await kvGet("model")) ?? {}) };
+  try {
+    return { ...DEFAULTS, ...((await kvGet("model")) ?? {}) };
+  } catch {
+    // storage blocked, private window, or no storage at all: the desk still runs on its defaults
+    return { ...DEFAULTS };
+  }
 }
 
 export async function setModelConfig(cfg) {
@@ -81,10 +86,17 @@ export async function probe() {
   try {
     const res = await fetch(`${cfg.baseUrl.replace(/\/$/, "")}/models`, { headers: authHeader(cfg) });
     if (!res.ok) return { live: false, reason: 'HTTP ' + res.status, models: MODELS };
+    // A static host answers an unknown path with the app's own page and a 200. So a page where a
+    // model list should be means the route is not there, whatever the status code says.
+    const type = res.headers.get("content-type") ?? "";
+    if (!type.includes("application/json")) {
+      return { live: false, reason: "the model route answered with a page, not a model list", models: MODELS };
+    }
     // A router-style bridge returns a list filtered to our app models; a raw
     // Meta endpoint returns the account's full model list. Either is live.
     const body = await res.json().catch(() => ({}));
     const ids = Array.isArray(body && body.data) ? body.data.map((m) => m.id) : [];
+    if (!ids.length) return { live: false, reason: "the model route returned no models", models: MODELS };
     const bridged = ids.length > 0 && ids.indexOf('muse-spark-1.3') < 0;
     return { live: true, reason: bridged ? 'reachable using local bridge' : 'reachable', models: MODELS, viaBridge: bridged };
   } catch (err) {
