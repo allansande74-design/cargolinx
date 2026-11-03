@@ -39,28 +39,25 @@ async function askOne(model, prompt) {
 }
 
 /**
- * The judge reasons before it writes, and on three real drafts that reasoning alone ran past 1,100
- * tokens and came back with finish_reason "length" and no words. At the proxy's ceiling of 1,200, with
- * a one-line instruction, it answers. So the ceiling is the starting point, not the retry.
+ * Muse Wonder reasons before it writes, and on three real drafts that reasoning alone ran past a 1,200
+ * token ceiling and came back with finish_reason "length" and no words. Measured on the live endpoint:
+ * the same drafts answered in 142 characters at 600 tokens with reasoning_effort "minimal". So the
+ * judge is asked to reason lightly — it still chooses, it just leaves room to say which one.
  */
 async function judge(drafts) {
-  const ask = async (suffix) => {
+  const ask = async (body) => {
     const res = await fetch("/api/meta/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: JUDGE,
-        messages: [{ role: "user", content: judgePrompt(drafts) + suffix }],
-        max_tokens: 1200,
-      }),
+      body: JSON.stringify({ model: JUDGE, messages: [{ role: "user", content: judgePrompt(drafts) }], ...body }),
     });
     const payload = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(payload?.error?.message ?? `the judge answered HTTP ${res.status}`);
     return (payload?.choices?.[0]?.message?.content ?? "").trim();
   };
-  const first = await ask("\n\nAnswer in one line: PICK n — reason.");
+  const first = await ask({ max_tokens: 700, reasoning_effort: "minimal" });
   if (first) return first;
-  const second = await ask("\n\nReply with only: PICK n");
+  const second = await ask({ max_tokens: 1200 });
   if (!second) throw new Error("the judge used its whole allowance thinking and returned no words");
   return second;
 }
