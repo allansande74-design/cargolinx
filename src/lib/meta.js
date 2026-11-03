@@ -562,10 +562,15 @@ export async function readDocument(file) {
         "Photograph it instead, or send the original PDF.",
     );
   }
+  // Measured on the deployed build: at this prompt length Spark spends the whole allowance reasoning
+  // and returns finish_reason "length" with no words (800 and 1,200 tokens alike), which surfaced to
+  // the operator as "the model did not return a readable field set". Asked to reason lightly it
+  // answers. The retry at a raised ceiling is in call() and keeps the same instruction.
   const out = await call("/chat/completions", {
     model: MODELS.reason,
-    max_tokens: 800,
+    max_tokens: 1000,
     temperature: 0,
+    reasoning_effort: "minimal",
     messages: [
       { role: "system", content: DOC_PROMPT },
       { role: "user", content: `Document: ${file.name}\n\n${text.slice(0, 12000)}` },
