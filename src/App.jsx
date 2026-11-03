@@ -183,6 +183,10 @@ function Desk({ onSignOut }) {
               <small>{(user && (user.label || user.role)) || "Local demo session"}</small>
             </span>
           </div>
+          <div className="demo-note">
+            <span className="demo-dot" aria-hidden="true" />
+            Demo workspace — sample policy settings
+          </div>
           <button className="ghost small" onClick={onSignOut}>Sign out</button>
         </div>
       </aside>
@@ -924,11 +928,48 @@ function QuoteView({ shipment, shipments, onPick, onChange, model, user }) {
 }
 
 function printQuote(shipment, lc, q) {
-  const w = window.open("", "_blank");
-  if (!w) return;
-  w.document.write(quoteHtml({ shipment, lc, q }));
-  w.document.close();
-  w.focus();
+  const html = quoteHtml({ shipment, lc, q });
+  // A popup window is blocked in many browsers and in every embedded webview,
+  // which left this button doing nothing at all. Render the document into a
+  // hidden frame and print from there, with a file download as the fallback.
+  const frame = document.createElement("iframe");
+  frame.setAttribute("aria-hidden", "true");
+  frame.setAttribute("tabindex", "-1");
+  frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;";
+  document.body.appendChild(frame);
+
+  const contentDocument = frame.contentWindow && frame.contentWindow.document;
+  if (!contentDocument) {
+    frame.remove();
+    downloadQuote(html, shipment);
+    return;
+  }
+
+  contentDocument.open();
+  contentDocument.write(html);
+  contentDocument.close();
+
+  setTimeout(() => {
+    try {
+      frame.contentWindow.focus();
+      frame.contentWindow.print();
+      setTimeout(() => frame.remove(), 60000);
+    } catch {
+      frame.remove();
+      downloadQuote(html, shipment);
+    }
+  }, 300);
+}
+
+function downloadQuote(html, shipment) {
+  const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `CargoLinx-quote-${shipment.ref || "quote"}.html`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
 
 function TrackView({ shipment, shipments, onPick, onChange }) {
