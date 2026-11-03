@@ -704,8 +704,8 @@ function NewShipment({ onCreated, model }) {
       )}
 
       <div className="row" style={{ marginTop: 8 }}>
-        <input ref={docRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,.html,.htm" aria-label="Supplier quotation or packing list" onChange={readDocFile} style={{ maxWidth: 260 }} />
-        <span className="hint">{docBusy ? "Reading document…" : "Attach a supplier quotation — the desk reads it into the fields."}</span>
+        <input ref={docRef} type="file" accept=".pdf,.csv,.tsv,.txt,.md,.json,.html,.htm" aria-label="Supplier quotation, rate card or packing list" onChange={readDocFile} style={{ maxWidth: 260 }} />
+        <span className="hint">{docBusy ? "Reading document…" : "Attach a quotation, a rate card or a packing list — the desk lifts its text on this machine and reads the fields out of it. A scan has no text to read; photograph it instead."}</span>
       </div>
       {docName && (
         <div className="hint" style={{ marginTop: 8 }}>
