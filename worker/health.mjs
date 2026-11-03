@@ -7,7 +7,10 @@
 // stores a short message and where it happened — never a page address with a query string, never
 // a name, never a phone number. Logs land in the Worker's own log stream, which the owner reads.
 
-const STARTED = Date.now();
+// Module scope runs before the first request and, in a Worker, a clock read there is not the clock
+// a request sees: the live route reported an uptime of fifty-six years on the first deploy. Take the
+// starting point on the first request instead, which is what anyone reading the number assumes.
+let firstServedAt = 0;
 
 const WINDOW_MS = 60_000;
 const MAX_PER_WINDOW = 30;
@@ -34,13 +37,15 @@ const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache
 
 /** Alive, and honest about whether the model key is present — never what it is. */
 export function health(env) {
+  const now = Date.now();
+  if (!firstServedAt) firstServedAt = now;
   const key = typeof env?.META_API_KEY === "string" ? env.META_API_KEY.trim() : "";
   const body = {
     status: "ok",
     models: key.length > 20 ? "configured" : "missing",
     routes: { meta: "/api/meta", errors: "/api/errors" },
-    uptimeSeconds: Math.round((Date.now() - STARTED) / 1000),
-    time: new Date().toISOString(),
+    servingSeconds: Math.max(0, Math.round((now - firstServedAt) / 1000)),
+    time: new Date(now).toISOString(),
   };
   return new Response(JSON.stringify(body), { status: 200, headers: JSON_HEADERS });
 }

@@ -23,7 +23,7 @@ A healthy answer looks like:
 
 ```json
 { "status": "ok", "models": "configured", "routes": { "meta": "/api/meta", "errors": "/api/errors" },
-  "uptimeSeconds": 412, "time": "2026-11-03T15:40:00.000Z" }
+  "servingSeconds": 412, "time": "2026-11-03T15:40:00.000Z" }
 ```
 
 `models` says `configured` or `missing` and never shows the key. Poll it every five minutes from a

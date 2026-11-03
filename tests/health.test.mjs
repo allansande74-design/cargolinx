@@ -11,6 +11,10 @@ test("health says it is alive and whether the key is present, never what it is",
   const text = JSON.stringify(withKey);
   assert.ok(!text.includes("sk-live"), "the credential must never appear in the answer");
 
+  const again = await json(health({}));
+  assert.ok(Number.isFinite(again.servingSeconds), "the uptime must be a number, not fifty-six years");
+  assert.ok(again.servingSeconds >= 0 && again.servingSeconds < 86_400, `implausible serving time ${again.servingSeconds}`);
+
   const without = await json(health({}));
   assert.equal(without.models, "missing");
   assert.equal(without.routes.meta, "/api/meta");
