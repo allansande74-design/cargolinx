@@ -356,8 +356,13 @@ export async function structureJob(note) {
  * The figures are passed in, so the model can only restate them.
  */
 export async function explainQuote(quote, context = "") {
+  // "low" is the desk's standing effort, and on this prompt it spent the whole allowance thinking and
+  // returned an empty string three times running - 998, 1198 and 1198 reasoning tokens against a 1000,
+  // 1600 and 3000 token budget. "minimal" answers the same question in 415 tokens with 258 characters of
+  // usable text, so the quote explanation asks for it explicitly. A caller's choice still wins.
   const out = await call("/chat/completions", {
     model: MODELS.reason,
+    reasoning_effort: "minimal",
     messages: [
       {
         role: "system",
@@ -368,7 +373,13 @@ export async function explainQuote(quote, context = "") {
     ],
     temperature: 0.2,
   });
-  return { text: out?.choices?.[0]?.message?.content ?? "", model: MODELS.reason };
+  const text = out?.choices?.[0]?.message?.content ?? "";
+  if (!text.trim()) {
+    // A blank paragraph under a quote reads as a broken desk. Say what happened instead; the figures
+    // beside it were computed by the engine and stand.
+    throw new ModelUnavailable("The model returned no words for this quote. The figures above are unchanged and still stand.");
+  }
+  return { text, model: MODELS.reason };
 }
 
 /**

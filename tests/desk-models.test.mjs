@@ -97,7 +97,9 @@ test("the client explanation never names a margin", async () => {
   const system = sent.messages[0].content.toLowerCase();
   assert.ok(!/mention the margin|and the margin/.test(system));
   assert.match(system, /never state or hint at a margin/);
-  assert.equal(sent.reasoning_effort, "low");
+  // The desk runs Spark at low effort everywhere else; this one prompt spent the entire allowance
+  // thinking and came back wordless at 1000, 1600 and 3000 tokens, so it asks for minimal effort.
+  assert.equal(sent.reasoning_effort, "minimal");
 });
 
 test("a phrase is tried, then its own word, then a plain pallet", () => {
