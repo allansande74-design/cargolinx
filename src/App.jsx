@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { landedCost, quote, floorPrice, KE_RATES } from "../engine/landed.mjs";
 import { planEta, applyEvent } from "../engine/eta.mjs";
-import { STORES, all, put, saveShipment, saveOrder, saveQueued, savePhoto, getPhoto, newId, kvGet, kvSet } from "./lib/db.js";
+import { STORES, all, put, saveShipment, saveOrder, saveQueued, savePhoto, getPhoto, newId, kvGet, kvSet, seedDemoJobs } from "./lib/db.js";
 import { flush, queueDepth, getConfig, setConfig } from "./lib/sync.js";
 import { probe, readCargoPhoto, transcribeVoice, explainQuote, getModelConfig, setModelConfig, readDocument, isReadableDocument } from "./lib/meta.js";
 import { quoteHtml } from "./lib/quote-doc.mjs";
@@ -81,6 +81,8 @@ function Desk({ onSignOut }) {
   const [accounts, setAccounts] = useState([]);
 
   async function refresh() {
+    // A first visit should not be an empty desk: three sample jobs, written once, never over a real one.
+    await seedDemoJobs().catch(() => {});
     setShipments(((await all(STORES.shipments)) ?? []).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)));
     setQueue(await queueDepth());
     const cfg = await getConfig();

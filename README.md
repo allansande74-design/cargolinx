@@ -156,6 +156,8 @@ What is verified:
 - [x] `npm test` invokes `node --test`, and `npm run build` invokes `vite build`.
 - [x] `.gitignore` excludes `node_modules/` and `dist/`, so neither build output nor installed
       dependencies reach the repository.
+- A first visit opens on three demonstration jobs, labelled as sample data, so the desk has a lane to read and an
+  export to reverse before the operator has entered anything.
 - Export runs the same lanes backwards: the lane table is reversed rather than retyped, and the quote stops at
   the destination port with the destination's duty printed as missing rather than guessed. See `docs/EXPORT.md`.
 - [x] A licence is in the tree — MIT in `LICENSE` (© 2026 Allan Sande, Altovex Global Logistics), named in the Licence section above.

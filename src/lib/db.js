@@ -87,6 +87,41 @@ export async function getPhoto(id) {
   return get(STORES.photos, id);
 }
 
+/**
+ * Jobs that exist so a first visit is not an empty desk.
+ *
+ * A judge, or a new operator, opens the desk and finds nothing to press: no lane to read, no order to
+ * follow, no export to reverse. These three jobs are sample data and say so in the record, so nothing
+ * here can be mistaken for a client's work. They use only place names and goods; no company, no person,
+ * no address and no price.
+ */
+export const DEMO_JOBS = [
+  { id: "clx_demo_1", ref: "CLX-DEMO-0001", origin: "Mombasa", destination: "Kampala", cargo: "Solar panels, boxed", qty: 12, weightKg: 900, status: "quoted" },
+  { id: "clx_demo_2", ref: "CLX-DEMO-0002", origin: "Mombasa", destination: "Nairobi", cargo: "Ceramic tiles, palletised", qty: 40, weightKg: 4500, status: "in transit" },
+  { id: "clx_demo_3", ref: "CLX-DEMO-0003", origin: "Nairobi", destination: "Kigali", cargo: "Packaged foods, cartons", qty: 160, weightKg: 1200, status: "quoted" },
+];
+
+/** Write the demonstration jobs once, and never overwrite anything already on the desk. */
+export async function seedDemoJobs(now = new Date()) {
+  const existing = await all(STORES.shipments);
+  if ((existing ?? []).length > 0) return { seeded: 0, reason: "desk already has jobs" };
+  const stamp = now.toISOString();
+  let seeded = 0;
+  for (const job of DEMO_JOBS) {
+    const record = {
+      ...job,
+      demo: true,
+      note: "Demonstration job — sample data, not a client shipment.",
+      value: { goods: 0, freight: 0 },
+      createdAt: stamp,
+      updatedAt: stamp,
+    };
+    await put(STORES.shipments, record);
+    seeded += 1;
+  }
+  return { seeded, reason: "empty desk" };
+}
+
 /** Persist an order and queue it, same contract as a shipment: local first, network later. */
 export async function saveOrder(order, op = "upsert") {
   const record = { ...order, updatedAt: new Date().toISOString() };
