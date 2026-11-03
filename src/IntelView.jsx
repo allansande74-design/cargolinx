@@ -45,14 +45,30 @@ async function judge(drafts) {
     body: JSON.stringify({
       model: JUDGE,
       messages: [{ role: "user", content: judgePrompt(drafts) }],
-      max_tokens: 700,
+      max_tokens: 1100,
     }),
   });
   const payload = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(payload?.error?.message ?? `the judge answered HTTP ${res.status}`);
   }
-  return (payload?.choices?.[0]?.message?.content ?? "").trim();
+  const said = (payload?.choices?.[0]?.message?.content ?? "").trim();
+  if (said) return said;
+  // Wonder reasons before it writes. On a long prompt it can spend the whole allowance thinking and
+  // return nothing; a second attempt with the ceiling raised, and a shorter instruction, gives it room.
+  const retry = await fetch("/api/meta/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: JUDGE,
+      messages: [{ role: "user", content: `${judgePrompt(drafts)}\n\nAnswer in one line: PICK n — reason.` }],
+      max_tokens: 1200,
+    }),
+  });
+  const second = await retry.json().catch(() => ({}));
+  const words = (second?.choices?.[0]?.message?.content ?? "").trim();
+  if (!words) throw new Error("the judge used its whole allowance thinking and returned no words");
+  return words;
 }
 
 export default function IntelView() {
