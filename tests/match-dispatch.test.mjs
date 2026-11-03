@@ -59,8 +59,10 @@ test("planning is deterministic under shuffled input", () => {
     { id: "L6b", weightKg: 900, corridor: "nairobi_last_mile", dueAt: "2026-11-04T12:00:00Z" },
     { id: "L6c", weightKg: 15000, corridor: "nairobi_kampala", dueAt: "2026-11-04T10:00:00Z" },
   ];
-  const a = JSON.stringify(planDispatch(loads, FLEET).assignments);
-  const b = JSON.stringify(planDispatch([...loads].reverse(), FLEET).assignments);
+  const at = "2026-11-04T06:00:00Z";
+  const strip = (p) => JSON.stringify(p.assignments.map(({ plannedAt, ...rest }) => rest));
+  const a = strip(planDispatch(loads, FLEET, { at }));
+  const b = strip(planDispatch([...loads].reverse(), FLEET, { at }));
   assert.equal(a, b);
 });
 
