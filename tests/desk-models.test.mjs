@@ -165,3 +165,27 @@ test("a blank twice is reported blank rather than pretended", async () => {
   const out = await conditionNote("data:image/jpeg;base64,AAAA");
   assert.equal(out.text, "");
 });
+
+test("a saved endpoint from an older build is retried against the desk's own, and the chip stays on", async () => {
+  const seen = [];
+  globalThis.fetch = async (url) => {
+    seen.push(String(url));
+    if (String(url).includes("/api/meta/models")) {
+      return new Response(JSON.stringify({ object: "list", data: [{ id: "muse-spark-1.3" }] }),
+        { status: 200, headers: { "content-type": "application/json" } });
+    }
+    return new Response("no such host", { status: 502 });
+  };
+  const out = await probe({ baseUrl: "http://127.0.0.1:4000/v1", apiKey: "stale" });
+  assert.equal(out.live, true, "the desk's own endpoint must be tried when the saved one is dead");
+  assert.match(out.reason, /recovered/);
+  assert.equal(out.recoveredFrom, "http://127.0.0.1:4000/v1");
+  assert.equal(seen.length, 2);
+});
+
+test("when both endpoints are dead the first reason is the one reported", async () => {
+  globalThis.fetch = async () => new Response("nope", { status: 503 });
+  const out = await probe({ baseUrl: "http://127.0.0.1:4000/v1" });
+  assert.equal(out.live, false);
+  assert.match(out.reason, /503/);
+});

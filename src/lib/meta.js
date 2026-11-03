@@ -167,15 +167,14 @@ export async function illustrate(prompt) {
   };
 }
 
-/** Is the model layer usable right now? Called on boot; never throws. */
-export async function probe() {
-  const cfg = await getModelConfig();
+/** One attempt against one endpoint. Never throws. */
+async function probeAt(cfg) {
   if (!cfg.baseUrl) {
     return { live: false, reason: "no endpoint configured", models: MODELS };
   }
   try {
     const res = await fetch(`${cfg.baseUrl.replace(/\/$/, "")}/models`, { headers: authHeader(cfg) });
-    if (!res.ok) return { live: false, reason: 'HTTP ' + res.status, models: MODELS };
+    if (!res.ok) return { live: false, reason: "HTTP " + res.status, models: MODELS };
     // A static host answers an unknown path with the app's own page and a 200. So a page where a
     // model list should be means the route is not there, whatever the status code says.
     const type = res.headers.get("content-type") ?? "";
@@ -187,11 +186,35 @@ export async function probe() {
     const body = await res.json().catch(() => ({}));
     const ids = Array.isArray(body && body.data) ? body.data.map((m) => m.id) : [];
     if (!ids.length) return { live: false, reason: "the model route returned no models", models: MODELS };
-    const bridged = ids.length > 0 && ids.indexOf('muse-spark-1.3') < 0;
-    return { live: true, reason: bridged ? 'reachable using local bridge' : 'reachable', models: MODELS, viaBridge: bridged };
+    const bridged = ids.indexOf("muse-spark-1.3") < 0;
+    return { live: true, reason: bridged ? "reachable using local bridge" : "reachable", models: MODELS, viaBridge: bridged };
   } catch (err) {
     return { live: false, reason: err.message, models: MODELS };
   }
+}
+
+/**
+ * Is the model layer usable right now? Called on boot; never throws.
+ *
+ * A device can be carrying a saved endpoint from an earlier build — a direct address, a laptop
+ * bridge that is no longer there — and then it says "models off" while the desk's own endpoint is
+ * perfectly healthy. So a failed first attempt is retried once against /api/meta, and if that works
+ * the saved setting is corrected rather than the user being told the models are down.
+ */
+export async function probe(stored) {
+  const cfg = stored ?? (await getModelConfig());
+  const first = await probeAt(cfg);
+  if (first.live) return first;
+  if (cfg.baseUrl !== DEFAULTS.baseUrl) {
+    const viaDesk = await probeAt({ baseUrl: DEFAULTS.baseUrl, apiKey: "" });
+    if (viaDesk.live) {
+      try {
+        await setModelConfig({ baseUrl: DEFAULTS.baseUrl, apiKey: "", keyPresent: false });
+      } catch { /* storage blocked: the recovery still stands for this session */ }
+      return { ...viaDesk, reason: "recovered through the desk's own endpoint", recoveredFrom: cfg.baseUrl };
+    }
+  }
+  return first;
 }
 
 /**
