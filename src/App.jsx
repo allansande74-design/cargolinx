@@ -211,7 +211,7 @@ function Desk({ onSignOut }) {
             </div>
           </div>
         {tab === "new" && <NewShipment onCreated={async (s) => { await refresh(); setSelectedId(s.id); setTab("quote"); }} model={model} />}
-        {tab === "quote" && <QuoteView shipment={selected} shipments={shipments} onPick={setSelectedId} onChange={refresh} model={model} />}
+        {tab === "quote" && <QuoteView shipment={selected} shipments={shipments} onPick={setSelectedId} onChange={refresh} model={model} user={user} />}
         {tab === "track" && <TrackView shipment={selected} shipments={shipments} onPick={setSelectedId} onChange={refresh} />}
         {tab === "compliance" && <ComplianceView shipment={selected} shipments={shipments} onPick={setSelectedId} onChange={refresh} />}
         {tab === "deadlines" && <Deadlines />}
@@ -740,31 +740,34 @@ function NewShipment({ onCreated, model }) {
   );
 }
 
-function QuoteView({ shipment, shipments, onPick, onChange, model }) {
+function QuoteView({ shipment, shipments, onPick, onChange, model, user }) {
   const [explanation, setExplanation] = useState("");
   const [servedBy, setServedBy] = useState("");
   const [err, setErr] = useState("");
+
+  // Hooks run unconditionally and in a fixed order: the shipment arrives asynchronously from the
+  // local store, so an early return placed above useMemo changes the hook count between renders
+  // and takes the whole desk down (React #310) when someone deep-links straight to this tab.
+  const lc = useMemo(() => {
+    if (!shipment?.value) return null;
+    return landedCost({
+      goods: shipment.value.goods,
+      freight: shipment.value.freight,
+      dutyRate: shipment.dutyRate,
+      clearing: shipment.services.clearing,
+      transport: shipment.services.transport,
+      lastMile: shipment.services.lastMile,
+      other: shipment.pvoc?.kes ?? 0,
+      quantity: shipment.qty,
+    });
+  }, [shipment]);
 
   if (!shipment) return (
     <Empty icon="file" title="No shipment selected"
       body="The quote is built from a shipment's line values. Create one, or open an existing shipment from the list, and the landed-cost ladder appears here." />
   );
-  if (!shipment.value) return <section className="card"><h2>Quote</h2><p className="hint">This record has no cost data yet — pick another shipment.</p></section>;
+  if (!lc) return <section className="card"><h2>Quote</h2><p className="hint">This record has no cost data yet — pick another shipment.</p></section>;
 
-  const lc = useMemo(
-    () =>
-      landedCost({
-        goods: shipment.value.goods,
-        freight: shipment.value.freight,
-        dutyRate: shipment.dutyRate,
-        clearing: shipment.services.clearing,
-        transport: shipment.services.transport,
-        lastMile: shipment.services.lastMile,
-        other: shipment.pvoc?.kes ?? 0,
-        quantity: shipment.qty,
-      }),
-    [shipment]
-  );
   const floor = floorPrice(lc, POLICY.minMargin);
   const margin = shipment.marginPct ?? 0.3;
   let q = null;
@@ -825,8 +828,12 @@ function QuoteView({ shipment, shipments, onPick, onChange, model }) {
           <div><span>Landed cost excl. VAT</span><strong><Money value={lc.totals.netCostExVat} ccy={lc.currency} /></strong></div>
           <div><span>Statutory</span><strong><Money value={lc.totals.statutory} ccy={lc.currency} /></strong></div>
           <div><span>Cost per unit</span><strong><Money value={lc.totals.perUnit} ccy={lc.currency} /></strong></div>
-          <div><span>Floor price (10%)</span><strong><Money value={floor.floorPrice} ccy={lc.currency} /></strong></div>
-          <div><span>After 5% concession</span><strong><Money value={policyCheck.concessionPrice} ccy={lc.currency} /></strong><div className="hint">margin {policyCheck.marginAfterConcessionPct}% · floor {POLICY.minMargin * 100}%</div></div>
+          {can(user?.role, "pricing.policy.view") && (
+            <>
+              <div><span>Floor price ({POLICY.minMargin * 100}%)</span><strong><Money value={floor.floorPrice} ccy={lc.currency} /></strong></div>
+              <div><span>After {POLICY.negotiationRoom * 100}% concession</span><strong><Money value={policyCheck.concessionPrice} ccy={lc.currency} /></strong><div className="hint">margin {policyCheck.marginAfterConcessionPct}% · floor {POLICY.minMargin * 100}%</div></div>
+            </>
+          )}
         </div>
       </section>
 
@@ -860,18 +867,32 @@ function QuoteView({ shipment, shipments, onPick, onChange, model }) {
         {q && (
           <>
             <div className="kpi">
-              <div><span>Margin</span><strong>{(margin * 100).toFixed(1)}%</strong></div>
+              {/* What the buyer pays is the buyer's business. What the desk earns on the line is
+                  not: margin and gross profit sit behind the same permission as the floor, so a
+                  client sign-in sees a firm price and no window into the desk's buying policy. */}
+              {can(user?.role, "pricing.policy.view") && (
+                <div><span>Margin</span><strong>{(margin * 100).toFixed(1)}%</strong></div>
+              )}
               <div><span>Price excl. VAT</span><strong><Money value={q.price} ccy={lc.currency} /></strong></div>
               <div><span>Price incl. VAT</span><strong><Money value={q.priceIncVat} ccy={lc.currency} /></strong></div>
-              <div><span>Gross profit</span><strong><Money value={q.grossProfit} ccy={lc.currency} /></strong></div>
+              {can(user?.role, "pricing.policy.view") && (
+                <div><span>Gross profit</span><strong><Money value={q.grossProfit} ccy={lc.currency} /></strong></div>
+              )}
             </div>
-            <div className="row" style={{ marginTop: 12 }}>
-              <label className="field" style={{ flex: 1, minWidth: 240 }}>
-                Margin (floor 15%, policy band 30–40%)
-                <input type="range" min="15" max="40" step="1" value={Math.round(margin * 100)} onChange={(e) => setMargin(Number(e.target.value) / 100)} />
-              </label>
-              <span className={`pill ${q.withinPolicyBand ? "ok" : "warn"}`}>{q.withinPolicyBand ? "Inside policy band" : "Outside policy band"}</span>
-            </div>
+            {can(user?.role, "pricing.policy.view") ? (
+              <div className="row" style={{ marginTop: 12 }}>
+                <label className="field" style={{ flex: 1, minWidth: 240 }}>
+                  Margin (floor 15%, policy band 30–40%)
+                  <input type="range" min="15" max="40" step="1" value={Math.round(margin * 100)} onChange={(e) => setMargin(Number(e.target.value) / 100)} />
+                </label>
+                <span className={`pill ${q.withinPolicyBand ? "ok" : "warn"}`}>{q.withinPolicyBand ? "Inside policy band" : "Outside policy band"}</span>
+              </div>
+            ) : (
+              <p className="hint" style={{ marginTop: 12 }}>
+                This price is the quote issued to you. The desk's margin is set on its side — ask your
+                account manager for a revised figure if the number does not suit.
+              </p>
+            )}
             <div className="row" style={{ marginTop: 10 }}>
               <button className="ghost" onClick={explain} disabled={!model.live}>Explain this quote</button>
               {!model.live && <span className="hint">Needs a Meta key. The figures above do not.</span>}

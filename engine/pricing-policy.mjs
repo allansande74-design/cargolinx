@@ -1,7 +1,9 @@
 /**
  * Pricing policy — SOP-PRICING-001 in code.
  *
- * Two numbers govern every quote: 30% optimum margin, 10% absolute floor.
+ * Two numbers govern every quote: 30% optimum margin, 15% absolute floor — the trade rule Mr Allan
+ * sets for Altovex, and the same figure the lane cards and the desk's own screen carry. The floor is
+ * the engine's refusal point; there is no quieter walk-away below it.
  * Two tests govern every client price: at least 5% below the market wholesale price,
  * and still above the floor after a further 5% concession.
  * Buying prices are solved backwards from the client price, never accepted as offered.
@@ -10,7 +12,7 @@ import { KE_RATES } from "./landed.mjs";
 
 export const POLICY = {
   targetMargin: 0.30,
-  minMargin: 0.10,
+  minMargin: 0.15,
   negotiationRoom: 0.05,   // room we deliberately leave for the client to push
   marketHeadroom: 0.05,    // how far under market wholesale we must sit
   maxQuoteValidityDays: 30,
@@ -43,7 +45,7 @@ export function assertMargin(margin) {
 
 /** The ladder the desk shows a client or an approver. */
 export function quoteLadder(costExVat) {
-  return [0.10, 0.20, 0.30, 0.35, 0.40].map((m) => ({
+  return [POLICY.minMargin, 0.20, POLICY.targetMargin, 0.35, 0.40].map((m) => ({
     marginPct: m,
     price: priceFromCost(costExVat, m),
     role: m === POLICY.targetMargin ? "target" : m === POLICY.minMargin ? "floor" : "reference",
@@ -81,7 +83,7 @@ export function assessQuote({ costExVat, price, marketWholesale, marketVerified 
   const marginAfterConcession = marginAt(costExVat, afterConcession);
   const mt = marketWholesale ? marketTest(price, marketWholesale) : null;
   const failures = [];
-  if (margin < POLICY.minMargin) failures.push("below the 10% floor");
+  if (margin < POLICY.minMargin) failures.push(`below the ${(POLICY.minMargin * 100).toFixed(0)}% floor`);
   if (marginAfterConcession < POLICY.minMargin) {
     failures.push("the 5% negotiation room breaks the floor");
   }

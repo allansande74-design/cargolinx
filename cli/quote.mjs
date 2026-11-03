@@ -65,12 +65,19 @@ console.log(`${pad("Statutory total", 64)}${money(lc.totals.statutory).padStart(
 console.log(`${pad("Landed cost incl. VAT", 64)}${money(lc.totals.total).padStart(14)}`);
 console.log(`${pad("Landed cost excl. recoverable VAT", 64)}${money(lc.totals.netCostExVat).padStart(14)}`);
 console.log(`${pad("Cost per unit excl. VAT", 64)}${money(lc.totals.perUnit).padStart(14)}`);
-console.log(`\nQUOTE at ${(q.marginPct * 100).toFixed(1)}% margin   (target ${(POLICY.targetMargin*100).toFixed(0)}%, floor ${(POLICY.minMargin*100).toFixed(0)}%, concession ${(POLICY.negotiationRoom*100).toFixed(0)}%)`);
+// The desk's pricing policy (target, floor, concession) is internal. It prints only when the
+// operator asks for it with --show-policy; the default output a developer or a screen-share
+// shows carries the price, not the policy.
+const showPolicy = process.argv.includes("--show-policy");
+const policyLine = showPolicy
+  ? `   (target ${(POLICY.targetMargin * 100).toFixed(0)}%, floor ${(POLICY.minMargin * 100).toFixed(0)}%, concession ${(POLICY.negotiationRoom * 100).toFixed(0)}%)`
+  : "";
+console.log(`\nQUOTE at ${(q.marginPct * 100).toFixed(1)}% margin${policyLine}`);
 console.log(`${pad("Selling price excl. VAT", 64)}${money(q.price).padStart(14)}`);
 console.log(`${pad("VAT on sale", 64)}${money(q.vatOnSale).padStart(14)}`);
 console.log(`${pad("Selling price incl. VAT", 64)}${money(q.priceIncVat).padStart(14)}`);
 console.log(`${pad("Gross profit", 64)}${money(q.grossProfit).padStart(14)}`);
-console.log(`${pad(`Cheapest defensible price (${(POLICY.minMargin*100).toFixed(0)}% floor)`, 64)}${money(f.floorPrice).padStart(14)}`);
-console.log(`${pad(`Price after ${(POLICY.negotiationRoom*100).toFixed(0)}% concession`, 64)}${money(q.price * (1 - POLICY.negotiationRoom)).padStart(14)}`);
+console.log(`${pad(showPolicy ? `Cheapest defensible price (${(POLICY.minMargin * 100).toFixed(0)}% floor)` : "Cheapest defensible price", 64)}${money(f.floorPrice).padStart(14)}`);
+console.log(`${pad(showPolicy ? `Price after ${(POLICY.negotiationRoom * 100).toFixed(0)}% concession` : "Price after the desk's concession", 64)}${money(q.price * (1 - POLICY.negotiationRoom)).padStart(14)}`);
 if (pvocNote) console.log(pvocNote);
 console.log("");

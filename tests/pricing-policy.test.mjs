@@ -6,24 +6,27 @@ import {
   assessQuote, solveBuyPrice, validityCheck, fxStamp,
 } from "../engine/pricing-policy.mjs";
 
-test("optimum is 30%, floor is 10%, room is 5%", () => {
+test("optimum is 30%, floor is 15%, room is 5%", () => {
   assert.equal(POLICY.targetMargin, 0.30);
-  assert.equal(POLICY.minMargin, 0.10);
+  assert.equal(POLICY.minMargin, 0.15);
   assert.equal(POLICY.negotiationRoom, 0.05);
 });
 
-test("price from cost yields the stated margin; margin below 10% is refused", () => {
+test("price from cost yields the stated margin; margin below 15% is refused", () => {
   assert.equal(priceFromCost(7000, 0.3), 10000);
   assert.equal(marginAt(7000, 10000), 0.3);
-  assert.throws(() => assertMargin(0.05), /below the 10% floor/);
-  assert.throws(() => priceFromCost(7000, 0), /below the 10% floor/);
+  assert.throws(() => assertMargin(0.05), /below the 15% floor/);
+  assert.throws(() => priceFromCost(7000, 0), /below the 15% floor/);
+  // The floor itself must be usable — a 15.0% quote is allowed, 14.9% is not.
+  assert.doesNotThrow(() => assertMargin(0.15));
+  assert.throws(() => assertMargin(0.149), /below the 15% floor/);
 });
 
 test("ladder marks target and floor", () => {
   const l = quoteLadder(7000);
-  assert.deepEqual(l.map((r) => r.marginPct), [0.1, 0.2, 0.3, 0.35, 0.4]);
+  assert.deepEqual(l.map((r) => r.marginPct), [0.15, 0.2, 0.3, 0.35, 0.4]);
   assert.equal(l.find((r) => r.role === "target").price, 10000);
-  assert.equal(l.find((r) => r.role === "floor").price, 7777.78);
+  assert.equal(l.find((r) => r.role === "floor").price, 8235.29);
 });
 
 test("market test requires 5% under wholesale", () => {

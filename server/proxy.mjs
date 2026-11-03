@@ -141,6 +141,33 @@ async function upstream(path, body) {
   return { status: res.status, json };
 }
 
+/* Substitute line: Google AI Studio's OpenAI-compatible endpoint, wired from the
+ * META_API_BASE / META_API_PATH / META_API_KEY variables so the owner can point the
+ * desk at a working upstream without touching code. Tried only after the Meta direct
+ * line refuses, and every response says which line actually served it. */
+const GEMINI_BASE = String(ENV.META_API_BASE || "").replace(/\/+$/, "");
+const GEMINI_PATH = ENV.META_API_PATH || "/chat/completions";
+const GEMINI_LANE = ENV.META_MODEL_LANE || "gemini-3.1-flash-lite";
+const GEMINI_REASONING = ENV.META_MODEL_REASONING || GEMINI_LANE;
+
+async function geminiChat(body) {
+  // Same contract as metaDirect: {status, json}; throws only on network failure.
+  const res = await fetch(GEMINI_BASE + GEMINI_PATH, {
+    method: "POST",
+    headers: { authorization: `Bearer ${META_KEY}`, "content-type": "application/json" },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(60000),
+  });
+  const text = await res.text();
+  let json;
+  try { json = JSON.parse(text); } catch { json = { raw: text.slice(0, 800) }; }
+  return { status: res.status, json };
+}
+
+function geminiModelFor(wanted) {
+  return /wonder|reason/i.test(String(wanted)) ? GEMINI_REASONING : GEMINI_LANE;
+}
+
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, "http://localhost");
   if (req.method === "OPTIONS") return send(res, 204, {});
@@ -212,23 +239,44 @@ const server = createServer(async (req, res) => {
         r = { status: 599, json: { error: `meta direct unreachable: ${e.message}` } };
       }
     }
+    if (!scheme && GEMINI_BASE && META_KEY) {
+      // Meta's line is refused (billing): ask the substitute line before the aggregator.
+      const gModel = geminiModelFor(wanted);
+      try {
+        const gr = await geminiChat({ ...forwarded, model: gModel, reasoning: undefined });
+        r = gr;
+        if (gr.status < 400) scheme = `gemini:${gModel}`;
+      } catch (e) {
+        r = { status: 599, json: { error: `substitute line unreachable: ${e.message}` } };
+      }
+    }
     const rec = {
       ts: new Date().toISOString(),
       requested_model: wanted,
-      served_by: scheme === "meta:direct" ? "meta:direct" : `${target.via}:${target.id}`,
-      why: scheme === "meta:direct" ? "Meta Model API, direct line" : `${target.why} (direct line failed or unavailable)`,
+      served_by: scheme || `${target.via}:${target.id}`,
+      why: scheme === "meta:direct"
+        ? "Meta Model API, direct line"
+        : (scheme ? `substitute line ${scheme}, standing in while Meta billing is blocked` : `${target.why} (direct line failed or unavailable)`),
       status: r ? r.status : null,
       ms: Date.now() - started,
       usage: (r && r.json.usage) || null,
       error: r && r.status >= 400 ? (r.json.error || r.json) : null,
     };
-    if (scheme !== "meta:direct") {
+    if (!scheme) {
       // Honest fallback: OpenRouter stand-in, labelled as such.
       if (!OPENROUTER_KEY) {
         logUsage(rec);
         return send(res, 503, { error: "direct line failed and no OPENROUTER_API_KEY on this host", bridge: { requested_model: wanted, attempted: "meta:direct" } });
       }
-      const fr = await upstream("/chat/completions", forwarded);
+      let fr;
+      try {
+        fr = await upstream("/chat/completions", forwarded);
+      } catch (e) {
+        rec.status = 599;
+        rec.error = `aggregator unreachable: ${e.message}`;
+        logUsage(rec);
+        return send(res, 503, { error: rec.error, bridge: { requested_model: wanted, attempted: rec.served_by } });
+      }
       rec.served_by = `${target.via}:${target.id}`;
       rec.status = fr.status;
       rec.ms = Date.now() - started;

@@ -40,7 +40,7 @@ export const ROLES = {
   },
   ops: {
     label: "Altovex operations",
-    can: ["order.view", "order.advance", "order.hold", "document.attach", "document.verify", "warehouse.receive", "warehouse.pick", "warehouse.pack", "dispatch.create", "tracking.view", "account.view"],
+    can: ["order.view", "order.advance", "order.hold", "document.attach", "document.verify", "warehouse.receive", "warehouse.pick", "warehouse.pack", "dispatch.create", "tracking.view", "account.view", "pricing.policy.view"],
   },
   driver: {
     label: "Driver",
@@ -49,6 +49,17 @@ export const ROLES = {
   admin: {
     label: "Platform administrator",
     can: ["*"],
+  },
+  // Desk-side roles offered on the sign-in screen. `owner` is the full desk; `finance` holds the
+  // money lane and is the second pair of eyes on a price. Both are Altovex-internal, so both may
+  // read the pricing policy; neither client role may.
+  owner: {
+    label: "Owner — full desk",
+    can: ["*"],
+  },
+  finance: {
+    label: "Finance",
+    can: ["order.view", "order.approve", "quote.view", "document.view", "tracking.view", "account.view", "pricing.policy.view"],
   },
 };
 

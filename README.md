@@ -17,8 +17,9 @@ A freight desk that works when the link does not:
 1. **Landed cost in seconds, itemised.** CIF, EAC CET duty band, excise, Import Declaration Fee,
    Railway Development Levy, VAT, clearing, inland transport, last mile — every line printed with its
    base and its rate, so a figure can be defended at a KRA counter.
-2. **Quote with a floor that refuses.** The engine will not issue a quote under a 15% margin; it also
-   states the cheapest defensible counter-offer.
+2. **Quote with a floor that refuses.** The engine will not issue a quote below the desk's own floor;
+   it also states the cheapest defensible counter-offer. The floor figure is internal and is never
+   printed on a customer document.
 3. **ETA with its basis printed.** Segments, speeds, dwell, customs time, buffer and confidence, plus
    the history of every change with its cause. A previous ETA is never overwritten silently.
 4. **Proof of delivery captured on device**, and a printable quotation generated from the same figures.
@@ -32,9 +33,9 @@ explain a quote. **No model ever sets a price or a date.**
 
 - 20 units, goods KES 1,200,000, freight KES 250,000, 25% duty band, clearing 45,000, transport
   60,000, last mile 12,000 → CIF 1,457,250.00; duty 364,312.50; IDF 36,431.25; RDL 29,145.00;
-  VAT 301,942.20; **landed cost 2,306,080.95**; quote at 30% = **2,863,055.36** ex-VAT,
-  **3,321,144.22** incl VAT; floor price (15%) 2,357,810.29. This run uses a code that is not a
-  regulated category, so no conformity fee applies. A regulated code (for example HS 8544.42)
+  VAT 301,942.20; **landed cost 2,306,080.95**; quoted price **2,863,055.36** ex-VAT and
+  **3,321,144.22** incl VAT. The margin held on that line is the desk's own figure and is not
+  disclosed. This run uses a code that is not a regulated category, so no conformity fee applies. A regulated code (for example HS 8544.42)
   adds the PVoC fee — KES 34,404.95 at the schedule minimum for that consignment — and the
   command below reproduces it.
 - Offline: an ETA delay recorded with no network, page reloaded from the service worker with the data

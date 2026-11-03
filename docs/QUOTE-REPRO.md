@@ -31,14 +31,18 @@ Landed cost incl. VAT                                             2,223,485.90
 Landed cost excl. recoverable VAT                                 1,921,543.70
 Cost per unit excl. VAT                                           2,223,485.90
 
-QUOTE at 30.0% margin   (policy band 30-40%, floor 15%)
+QUOTE at 30.0% margin
 Selling price excl. VAT                                           2,745,062.43
 VAT on sale                                                         439,209.99
 Selling price incl. VAT                                           3,184,272.42
 Gross profit                                                        823,518.73
-Cheapest defensible price (10% floor)                             2,265,048.56
+Cheapest defensible price                                         2,135,048.56
+Price after the desk's concession                                 2,607,809.31
 PVoC route A on FOB USD 9242.86: USD 265.00 = KES 34,404.95 (minimum of the schedule)
 ```
 
 Landed cost before VAT is KES 1,921,543.70. The card the buyer receives is KES 3,184,272.42
-including VAT at 30 per cent margin, inside the 30 to 40 per cent policy band.
+including VAT. The margin used for this demonstration is an input to the command; the desk's
+policy behind it — its target, floor and concession — is internal and is not printed by default.
+An operator who needs it in the terminal adds `--show-policy`, which is a desk-side flag and never
+part of a customer document.

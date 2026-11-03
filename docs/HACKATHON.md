@@ -35,7 +35,7 @@ and reads; it never prices and never dates.
 | Landed cost | `engine/landed.mjs` | CIF, duty, IDF 2.5%, RDL 2%, VAT 16%, clearing, transport, last mile, PVoC |
 | Tariff and conformity | `engine/tariff.mjs` | HS table for corridor codes, EAC CET bands, PVoC fees, refusal on an unclassified code |
 | ETA | `engine/eta.mjs` | Segmented transit plan with dwell, border time and confidence |
-| Quote gate | `engine/quote.mjs`, `engine/pricing-policy.mjs` | 30% target margin, 10% hard floor, a 5% concession that must still clear the floor, a market test against wholesale, and buying prices solved backwards from the client price |
+| Quote gate | `engine/quote.mjs`, `engine/pricing-policy.mjs` | a margin held above an internal floor, a concession that must still clear it, a market test against wholesale, and buying prices solved backwards from the client price. The policy figures themselves are internal: they are not printed to the terminal by default and never appear on a customer document |
 | Documents | `src/lib/quote-doc.mjs` | Quotation HTML with a QR that verifies the figures against the engine |
 | Offline layer | `src/lib/db.js`, `src/lib/sync.js` | IndexedDB persistence, idempotent queue, drain on reconnect |
 | Deadlines | `engine/deadlines.mjs`, `src/Deadlines.jsx` | A clock and countdown per assignment, milestone calendar, T-7/T-3/T-1/T-0 client reports, and a delay register that only excuses a named external cause |
@@ -56,7 +56,7 @@ The model layer is narrow on purpose and every call names the model that served 
   `docs/META-CALLS.md` with the model, task, status, latency and token count; full response bodies
   with provider ids are in `docs/evidence/`. The quote-explanation answer used in the film was
   produced on the same day for a KES 2,038,543.70 landed cost and named the two largest lines (duty
-  KES 364,312.50; VAT KES 301,942.20) and the 30% margin — all figures supplied by the engine,
+  KES 364,312.50; VAT KES 301,942.20) and the price the desk would quote — all figures supplied by the engine,
   none produced by the model.
 - **Honest degradation:** with no key configured, the desk says `Models off` and the four
   model-assisted steps take a deterministic path or are disabled. It never fabricates a call.
@@ -73,8 +73,8 @@ The model layer is narrow on purpose and every call names the model that served 
 - Photographs are public domain from Wikimedia Commons, credit burned into the card: the Mombasa
   container terminal and the cable reels used for the model scene. That scene shows the photograph
   and the recorded call's provenance; the mask itself is in `evidence/`, not drawn over the picture.
-- The figures are the engine's: landed cost before VAT KES 2,038,543.70, quoted at 30% margin
-  KES 2,912,205.29 ex-VAT.
+- The figures are the engine's: landed cost before VAT KES 2,038,543.70, quoted at KES 2,912,205.29
+  ex-VAT.
 - Quality measured on the delivered file, not asserted: 1080p25, -16.1 LUFS integrated, -1.5 dBTP
   true peak, no shot held still beyond 1.28 s, and every frame read for stale wording. Reports:
   `out/demo/FILM-QA.md` and `out/demo/FILM-CONTENT-QA.md`.

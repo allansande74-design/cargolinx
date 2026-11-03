@@ -44,3 +44,12 @@ rates/out/
 # python bytecode
 __pycache__/
 *.pyc
+
+# internal only — never publish (owner's instruction, 3 Nov 2026)
+MEMORY.md
+rates/
+out/meta-probe/
+scripts/apply_send_lock.sh
+scripts/live-calls-*.mjs
+docs/live_calls_*.json
+docs/gemini_live_calls_*.json

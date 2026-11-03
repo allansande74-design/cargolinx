@@ -31,8 +31,8 @@ const STORY = [
   },
   {
     pain: "The margin quietly disappears between the CIF invoice and the clearing bill, and the trader only finds out after delivery.",
-    fix: "The desk refuses to issue a quote under a 15% margin, and states the cheapest price it can still defend instead of letting the number slide.",
-    proof: "Same run: quote at 30% is 2,863,055.36 ex VAT; the floor is 2,357,810.29, and the desk says so rather than agreeing to 2.2M.",
+    fix: "The desk refuses to issue a quote below its own floor, and states the cheapest price it can still defend instead of letting the number slide.",
+    proof: "Same run: the desk declines a 2.2M request and shows the arithmetic behind the lowest price it can defend — not a number typed under pressure.",
   },
   {
     pain: "The ETA is a figure someone typed into WhatsApp, and when it moves nobody can say why.",
@@ -57,7 +57,7 @@ const STORY = [
 ];
 
 const FEATURES = [
-  { i: "calc", h: "Landed cost, line by line", p: "Freight, duty, VAT, clearing, last mile and margin, computed by a local engine from dated statutory rates. The model explains a figure; it never invents one." },
+  { i: "calc", h: "Landed cost, line by line", p: "Freight, duty, VAT, clearing, last mile and the delivered price, computed by a local engine from dated statutory rates. The model explains a figure; it never invents one." },
   { i: "cloud", h: "Built to work with no signal", p: "Every action lands in a local store first and syncs when the network returns. Corridor work happens where the trucks are, not where the Wi-Fi is." },
   { i: "pin", h: "Tracking that survives the road", p: "Status events, proof of delivery and photo evidence attach to the shipment, not to a chat thread that scrolls away." },
   { i: "shield", h: "Compliance before the border", p: "HS classification, EAC certificates of origin, exemptions and waivers checked before the truck reaches the gate." },
@@ -67,7 +67,7 @@ const FEATURES = [
 
 const STEPS = [
   { h: "Describe the cargo", p: "Lane, goods, weight, packing and incoterm. The desk applies the corridor's freight, duty and clearing treatment." },
-  { h: "Get a defensible quote", p: "A landed-cost ladder from supplier price to delivered price, with the margin visible. Adjust one line and the whole ladder recomputes." },
+  { h: "Get a defensible quote", p: "A landed-cost ladder from supplier price to delivered price, each line tied to a dated rate. Adjust one line and the whole ladder recomputes." },
   { h: "Move it and prove it", p: "Book, track, clear, deliver. Status events and documents stay with the shipment for audit and for the customer." },
 ];
 
@@ -128,10 +128,10 @@ export default function Landing({ onEnter, onSignIn }) {
               <span style={{ marginLeft: 10, fontSize: 11.5, color: "#7f95b0" }}>Mombasa → Kampala · 20ft · solar panels</span>
             </div>
             <div className="hero-body">
-              <div className="mock-row"><span>Landed cost</span><span className="chip chip-ok">Inside policy band</span></div>
+              <div className="mock-row"><span>Landed cost</span><span className="chip chip-ok">Quoted</span></div>
               <div className="mock-quote">
                 <div className="k">Quoted to customer · before VAT</div>
-                <div className="v">KES 3,084,472 <small>30% margin</small></div>
+                <div className="v">KES 3,084,472 <small>firm 14 days</small></div>
               </div>
               <div className="mock-cols">
                 <div className="mock-cell"><div className="k">Landed incl. VAT</div><div className="v">2,468,686</div></div>
