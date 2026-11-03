@@ -1,13 +1,16 @@
 # The demo film
 
-One cut ships with this repository: `demos/cargolinx-demo-entry-153s.mp4` — 153.84 s
-(2 min 33.8 s, inside the three-minute limit), 1920×1080 at 25 fps, h264 with AAC narration,
-−16.1 LUFS integrated, −1.5 dBTP true peak. It is narrated, it needs no login, and it is the file
-the submission links to:
+One cut ships with this repository: `public/demo/CargoLinx-demo-3Nov2026.mp4` — 68.8 s, 1920×1080 at
+30 fps, h264. It is silent (the desk's own screens carry the story), it needs no login, and it is the
+file the submission links to:
 
 - Film page: https://altovexcargolinx.allansande74.workers.dev/demo/
-- Direct file: https://altovexcargolinx.allansande74.workers.dev/demo/cargolinx-demo-entry-153s.mp4
-- Repository copy: `demos/cargolinx-demo-entry-153s.mp4`, byte-identical, 15,655,352 bytes
+- Direct file: https://altovexcargolinx.allansande74.workers.dev/demo/CargoLinx-demo-3Nov2026.mp4
+- Repository copy: `public/demo/CargoLinx-demo-3Nov2026.mp4`
+
+The cut spends every second on a result: waiting inside a scene is compressed to a flash while the
+parsed rate card, the filled note, the counted cargo, the spoken transcript and the written quote
+explanation all stay on screen, and the film closes on a card that says what to do next.
 
 Nothing in the film is a mock-up. Every document on screen is raised by the product itself for one
 shipment — order `CLX-261031-714`, buyer Kampala Power & Cable Ltd, vehicle KDH 417X — and every

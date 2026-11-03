@@ -1,7 +1,7 @@
 ## Live and demo
 
 - **Live desk:** https://altovexcargolinx.allansande74.workers.dev/ — the single canonical deployment, on Cloudflare, no login.
-- **Watch the demo film:** https://altovexcargolinx.allansande74.workers.dev/demo/ — also in the repo at `demos/cargolinx-demo-entry-153s.mp4` (2 min 33.8 s, inside the 3-minute cap)
+- **Watch the demo film:** https://altovexcargolinx.allansande74.workers.dev/demo/ — also in the repo at `public/demo/CargoLinx-demo-3Nov2026.mp4` (68.8 s, well inside the 3-minute cap)
 - **Commit window:** 27 October to 4 November 2026, full log in `git log --since=2026-10-27`
 
 # CargoLinx v2 — offline freight desk for East African corridors

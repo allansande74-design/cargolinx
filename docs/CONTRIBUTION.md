@@ -35,7 +35,7 @@ Built during the event window; every figure below is measured from this reposito
 
 ## The demo and the measurements
 
-- `cargolinx-demo-entry-153s.mp4` — 153.84 seconds, fifteen scenes, captured from the running build.
+- `public/demo/CargoLinx-demo-3Nov2026.mp4` — 68.8 seconds, eleven scenes, captured from the running build.
 - `docs/PERF.md` — the browser's own numbers for the deployed build: LCP 1,084 ms cold, 100 ms
   warm, interaction latency 32 ms, CLS 0.000 on the landing page and 0.180 on the desk.
 - `docs/HACKATHON.md` — the contribution card for this submission.

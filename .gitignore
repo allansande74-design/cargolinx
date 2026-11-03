@@ -27,7 +27,7 @@ out/demo/qa_*.png
 
 # only the two submission cuts stay in the repo
 out/demo/*.mp4
-!out/demo/cargolinx-demo-v5-film.mp4
+
 !out/demo/cargolinx-demo-v11-final.mp4
 
 # GitHub Pages build output — generated, deployed by scripts/deploy-pages.sh
