@@ -10,6 +10,7 @@
 
 import { parseRange, isMediaPath } from "./byte-range.mjs";
 import { handle as handleMeta } from "./meta-proxy.mjs";
+import { health, report } from "./health.mjs";
 
 const MEDIA_HEADERS = {
   "accept-ranges": "bytes",
@@ -24,6 +25,13 @@ export default {
     // in the bundle a phone downloads.
     if (url.pathname === "/api/meta" || url.pathname.startsWith("/api/meta/")) {
       return handleMeta(request, env);
+    }
+
+    // Alive? and: something broke on the desk. Both answer without touching the model key.
+    if (url.pathname === "/api/health") return health(env);
+    if (url.pathname === "/api/errors") {
+      if (request.method !== "POST") return new Response(null, { status: 405, headers: { allow: "POST" } });
+      return report(request, env);
     }
 
     if (request.method !== "GET" && request.method !== "HEAD") {

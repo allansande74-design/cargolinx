@@ -19,9 +19,9 @@ $ npm test
 TAP version 13
 # Subtest: the file passes its own invariants
 ...
-1..469
-# tests 469
-# pass 469
+1..475
+# tests 475
+# pass 475
 # fail 0
 # cancelled 0
 # skipped 0
@@ -29,7 +29,7 @@ TAP version 13
 # duration_ms 1283.051052
 ```
 
-Exit status `0`. 469 assertions across the engine, the quote ladder, the offline queue, the
+Exit status `0`. 475 assertions across the engine, the quote ladder, the offline queue, the
 document renderer and the submission-readiness checks.
 
 ## 2. Production build
