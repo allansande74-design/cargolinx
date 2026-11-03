@@ -131,11 +131,24 @@ async function asDataUrl(src) {
   return `data:${blob.type || "image/jpeg"};base64,${btoa(binary)}`;
 }
 
-/** Count and classify cargo from an intake photograph. Returns counts, never a price. */
-export async function readCargoPhoto(dataUrl, hint = "") {
-  const cfg = await getModelConfig();
-  const concept = String(hint || "").trim().split(/\s+/).slice(0, 3).join(" ") || "carton";
-  const imageUrl = await asDataUrl(dataUrl);
+/**
+ * What to look for, in the order it is worth asking. SAM answers about one thing at a time and a
+ * phrase like "dry cartons" finds nothing while "carton" finds 65, so the phrase is tried first,
+ * then its last word singular, then a plain pallet — and the extra calls only happen on a blank.
+ */
+export function conceptsFrom(hint) {
+  const base = String(hint || "").trim().split(/\s+/).slice(0, 3).join(" ");
+  const words = base.split(/\s+/).filter(Boolean);
+  const last = words.length > 1
+    ? words[words.length - 1].replace(/[^a-zA-Z]/g, "").replace(/ies$/, "y").replace(/s$/, "")
+    : "";
+  const list = [base || "carton"];
+  if (last && !list.includes(last)) list.push(last);
+  for (const word of ["pallet", "box"]) if (!list.includes(word)) list.push(word);
+  return list.slice(0, 3);
+}
+
+async function segmentOnce(cfg, imageUrl, concept) {
   const res = await fetch(`${cfg.baseUrl.replace(/\/$/, "")}/responses`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeader(cfg) },
@@ -156,20 +169,40 @@ export async function readCargoPhoto(dataUrl, hint = "") {
     }),
   });
   if (!res.ok) throw new Error(`model endpoint ${res.status}: ${(await res.text()).slice(0, 300)}`);
-
   // SAM 3.1 answers in the text lane with special tokens: one box and one mask per match, so the
   // count is the number of boxes it actually found — not a sentence from a language model.
   const text = await readEventText(res);
-  const boxes = [...text.matchAll(/<\|box;x1=(\d+);y1=(\d+);x2=(\d+);y2=(\d+);/g)].map((m) => ({
+  return [...text.matchAll(/<\|box;x1=(\d+);y1=(\d+);x2=(\d+);y2=(\d+);/g)].map((m) => ({
     x1: Number(m[1]), y1: Number(m[2]), x2: Number(m[3]), y2: Number(m[4]),
   }));
+}
+
+/** Count and classify cargo from an intake photograph. Returns counts, never a price. */
+export async function readCargoPhoto(dataUrl, hint = "") {
+  const cfg = await getModelConfig();
+  const imageUrl = await asDataUrl(dataUrl);
+  const tried = [];
+  for (const concept of conceptsFrom(hint)) {
+    tried.push(concept);
+    const boxes = await segmentOnce(cfg, imageUrl, concept);
+    if (boxes.length) {
+      return {
+        items: [{ label: concept, count: boxes.length, confidence: null }],
+        totalCount: boxes.length,
+        boxes,
+        notes: tried.length > 1 ? `asked for "${tried[0]}" first, then "${concept}"` : "",
+        model: MODELS.vision,
+        concept,
+      };
+    }
+  }
   return {
-    items: boxes.length ? [{ label: concept, count: boxes.length, confidence: null }] : [],
-    totalCount: boxes.length ? boxes.length : null,
-    boxes,
-    notes: boxes.length ? "" : `nothing matching "${concept}" was found in this photograph`,
+    items: [],
+    totalCount: null,
+    boxes: [],
+    notes: `nothing matching ${tried.map((c) => `"${c}"`).join(", ")} was found in this photograph`,
     model: MODELS.vision,
-    concept,
+    concept: tried[tried.length - 1],
   };
 }
 

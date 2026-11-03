@@ -3,7 +3,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { probe, withReasoningEffort, readCargoPhoto, explainQuote } from "../src/lib/meta.js";
+import { probe, withReasoningEffort, readCargoPhoto, explainQuote, conceptsFrom } from "../src/lib/meta.js";
 
 const answer = (body, type = "application/json", status = 200) => {
   globalThis.fetch = async () => new Response(typeof body === "string" ? body : JSON.stringify(body), {
@@ -98,4 +98,30 @@ test("the client explanation never names a margin", async () => {
   assert.ok(!/mention the margin|and the margin/.test(system));
   assert.match(system, /never state or hint at a margin/);
   assert.equal(sent.reasoning_effort, "low");
+});
+
+test("a phrase is tried, then its own word, then a plain pallet", () => {
+  assert.deepEqual(conceptsFrom("dry cartons"), ["dry cartons", "carton", "pallet"]);
+  assert.deepEqual(conceptsFrom("20 ft container, solar panels"), ["20 ft container,", "container", "pallet"]);
+  assert.deepEqual(conceptsFrom(""), ["carton", "pallet", "box"]);
+});
+
+test("a blank first answer falls through to the next concept", async () => {
+  const asked = [];
+  globalThis.fetch = async (url, init = {}) => {
+    if (String(url).startsWith("blob:")) {
+      return new Response(new Uint8Array([1, 2]), { status: 200, headers: { "content-type": "image/jpeg" } });
+    }
+    const concept = JSON.parse(init.body).input[0].content[0].text;
+    asked.push(concept);
+    const delta = concept === "dry cartons" ? "" : "<|box;x1=1;y1=2;x2=3;y2=4;";
+    return new Response(`data: {"type":"response.output_text.delta","delta":${JSON.stringify(delta)}}\n`, {
+      status: 200, headers: { "content-type": "text/event-stream" },
+    });
+  };
+  const out = await readCargoPhoto("blob:https://desk.example/9", "dry cartons");
+  assert.deepEqual(asked, ["dry cartons", "carton"]);
+  assert.equal(out.totalCount, 1);
+  assert.equal(out.concept, "carton");
+  assert.match(out.notes, /asked for "dry cartons" first/);
 });
