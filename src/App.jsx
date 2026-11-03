@@ -743,23 +743,36 @@ function QuoteView({ shipment, shipments, onPick, onChange, model, user }) {
   // and takes the whole desk down (React #310) when someone deep-links straight to this tab.
   const lc = useMemo(() => {
     if (!shipment?.value) return null;
-    return landedCost({
-      goods: shipment.value.goods,
-      freight: shipment.value.freight,
-      dutyRate: shipment.dutyRate,
+    // The engine refuses to guess a duty band, which is right - but a refusal must not take the desk
+    // down. A record without a band shows the reason here instead of the error boundary.
+    try {
+      return landedCost({
+        goods: shipment.value.goods,
+        freight: shipment.value.freight,
+        dutyRate: shipment.dutyRate,
       // A record written by an older build, or seeded as sample data, can lack the services block.
       // Reading it blind is what took the whole desk down when the demo jobs arrived.
       clearing: shipment.services?.clearing ?? 0,
       transport: shipment.services?.transport ?? 0,
       lastMile: shipment.services?.lastMile ?? 0,
       other: shipment.pvoc?.kes ?? 0,
-      quantity: shipment.qty,
-    });
+        quantity: shipment.qty,
+      });
+    } catch (e) {
+      return { error: e.message };
+    }
   }, [shipment]);
 
   if (!shipment) return (
     <Empty icon="file" title="No shipment selected"
       body="The quote is built from a shipment's line values. Create one, or open an existing shipment from the list, and the landed-cost ladder appears here." />
+  );
+  if (lc?.error) return (
+    <section className="card">
+      <h2>Quote</h2>
+      <p className="warning">This record cannot be costed yet: {lc.error}.</p>
+      <p className="hint">Open the shipment, set its duty band, and the ladder appears. Nothing is assumed about duty.</p>
+    </section>
   );
   if (!lc) return <section className="card"><h2>Quote</h2><p className="hint">This record has no cost data yet — pick another shipment.</p></section>;
 

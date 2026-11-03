@@ -104,7 +104,20 @@ export const DEMO_JOBS = [
 /** Write the demonstration jobs once, and never overwrite anything already on the desk. */
 export async function seedDemoJobs(now = new Date()) {
   const existing = await all(STORES.shipments);
-  if ((existing ?? []).length > 0) return { seeded: 0, reason: "desk already has jobs" };
+  if ((existing ?? []).length > 0) {
+    // A sample written by an older build can lack the fields the quote screen reads. Repair those
+    // records in place - never a real job, only the ones this function writes.
+    let repaired = 0;
+    for (const row of existing) {
+      if (!row?.demo) continue;
+      const want = DEMO_JOBS.find((j) => j.id === row.id);
+      if (!want) continue;
+      if (row.services && typeof row.dutyRate === "number" && row.value) continue;
+      await put(STORES.shipments, { ...row, value: want.value, services: want.services, dutyRate: want.dutyRate });
+      repaired += 1;
+    }
+    return { seeded: 0, repaired, reason: "desk already has jobs" };
+  }
   const stamp = now.toISOString();
   let seeded = 0;
   for (const job of DEMO_JOBS) {
