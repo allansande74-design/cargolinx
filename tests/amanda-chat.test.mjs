@@ -93,3 +93,9 @@ test("a GET is refused and a bodyless POST is refused", async () => {
   );
   assert.equal(empty.status, 400);
 });
+
+test("the worker runs before the asset handler for the Amanda route", async () => {
+  const { readFileSync } = await import("node:fs");
+  const cfg = readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8");
+  assert.match(cfg, /"\/api\/amanda\/\*"/, "run_worker_first must cover /api/amanda/* or the route 405s");
+});
