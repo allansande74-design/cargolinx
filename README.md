@@ -43,7 +43,7 @@ explain a quote. **No model ever sets a price or a date.**
   duplicate, local record intact.
 - Engine maths, refusal below the margin floor, ETA change history, outbox idempotency, conflict
   resolution, document content, tariff and PVoC rules, dossier guards, account scoping, order-stage
-  guards, goods-received variance and LocoNav payload mapping — **562 tests, 0 failing** (`npm test`, run on 4 November 2026 against commit `e240416`).
+  guards, goods-received variance and LocoNav payload mapping — **574 tests, 0 failing** (`npm test`, run on 4 November 2026, including the Pack and price ladder tests).
 
 ## Tariff, conformity and clearance (added 29 October 2026)
 

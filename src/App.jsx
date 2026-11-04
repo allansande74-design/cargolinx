@@ -32,6 +32,7 @@ import Auth from "./Auth.jsx";
 import AmandaBar from "./AmandaBar.jsx";
 import BrandBar from "./BrandBar.jsx";
 import ContactPage from "./ContactPage.jsx";
+import PackView from "./PackView.jsx";
 
 const money = (n, ccy = "KES") =>
   `${ccy} ${Number(n || 0).toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -309,6 +310,7 @@ function routeFromHash() {
   const h = window.location.hash || "";
   if (h.startsWith("#/signin")) return "signin";
   if (h.startsWith("#/contact")) return "contact";
+  if (h.startsWith("#/pack")) return "pack";
   if (/^#\/hub(\/|$)/.test(h)) return "hub";
   if (h.startsWith("#/desk")) return "desk";
   return "landing";
@@ -325,7 +327,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    document.title = route === "desk" ? "Altovex CargoLinx · Desk" : route === "signin" ? "Sign in · Altovex CargoLinx" : route === "hub" ? "Altovex CargoLinx · Dashboards" : "Altovex CargoLinx · Offline freight desk";
+    document.title = route === "desk" ? "Altovex CargoLinx · Desk" : route === "signin" ? "Sign in · Altovex CargoLinx" : route === "hub" ? "Altovex CargoLinx · Dashboards" : route === "pack" ? "Pack and price · Altovex CargoLinx" : "Altovex CargoLinx · Offline freight desk";
     document.body.classList.toggle("site", route !== "desk");
   }, [route]);
 
@@ -348,6 +350,7 @@ export default function App() {
   );
 
   if (route === "contact") return shell(<ContactPage />);
+  if (route === "pack") return shell(<PackView />);
   if (route === "desk") return shell(<Desk onSignOut={signOut} />);
   if (route === "hub") return shell(<DashboardHub />);
   if (route === "signin") return shell(<Auth onEnter={() => go("#/desk/new")} onHome={() => go("#/")} />);
