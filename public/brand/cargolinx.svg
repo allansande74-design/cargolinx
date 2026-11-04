@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 64" width="300" height="64" role="img" aria-label="CargoLinx freight desk">
+  <title>CargoLinx</title>
+  <!-- a container seen head-on with a route arrow leaving it -->
+  <g fill="none" stroke="#159a8c" stroke-width="2.6">
+    <rect x="12" y="20" width="30" height="24" rx="3"/>
+    <path d="M22 20v24M32 20v24"/>
+  </g>
+  <path d="M46 32h14" stroke="#c9a227" stroke-width="3" stroke-linecap="round"/>
+  <path d="M56 25l8 7-8 7" fill="none" stroke="#c9a227" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="72" y="30" font-family="Helvetica, Arial, sans-serif" font-size="23" font-weight="700" fill="#ffffff" letter-spacing="1.6">CARGOLINX</text>
+  <text x="73" y="48" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#c9a227" letter-spacing="3.2">FREIGHT DESK</text>
+</svg>

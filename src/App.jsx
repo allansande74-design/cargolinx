@@ -30,6 +30,8 @@ import DashboardHub from "./dashboards/hub.jsx";
 import Landing from "./Landing.jsx";
 import Auth from "./Auth.jsx";
 import AmandaBar from "./AmandaBar.jsx";
+import BrandBar from "./BrandBar.jsx";
+import ContactPage from "./ContactPage.jsx";
 
 const money = (n, ccy = "KES") =>
   `${ccy} ${Number(n || 0).toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -306,6 +308,7 @@ function tabFromHash() {
 function routeFromHash() {
   const h = window.location.hash || "";
   if (h.startsWith("#/signin")) return "signin";
+  if (h.startsWith("#/contact")) return "contact";
   if (/^#\/hub(\/|$)/.test(h)) return "hub";
   if (h.startsWith("#/desk")) return "desk";
   return "landing";
@@ -336,36 +339,19 @@ export default function App() {
     go("#/signin");
   }
 
-  if (route === "desk") {
-    return (
-      <>
-        <Desk onSignOut={signOut} />
-        <AmandaBar />
-      </>
-    );
-  }
-  if (route === "hub") {
-    return (
-      <>
-        <DashboardHub />
-        <AmandaBar />
-      </>
-    );
-  }
-  if (route === "signin") {
-    return (
-      <>
-        <Auth onEnter={() => go("#/desk/new")} onHome={() => go("#/")} />
-        <AmandaBar />
-      </>
-    );
-  }
-  return (
-    <>
-      <Landing onEnter={() => go("#/desk/new")} onSignIn={() => go("#/signin")} />
+  const shell = (node) => (
+    <div style={{ paddingTop: 46 }}>
+      <BrandBar />
+      {node}
       <AmandaBar />
-    </>
+    </div>
   );
+
+  if (route === "contact") return shell(<ContactPage />);
+  if (route === "desk") return shell(<Desk onSignOut={signOut} />);
+  if (route === "hub") return shell(<DashboardHub />);
+  if (route === "signin") return shell(<Auth onEnter={() => go("#/desk/new")} onHome={() => go("#/")} />);
+  return shell(<Landing onEnter={() => go("#/desk/new")} onSignIn={() => go("#/signin")} />);
 }
 
 function NewShipment({ onCreated, model }) {
