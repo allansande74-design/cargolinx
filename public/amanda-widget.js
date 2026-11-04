@@ -77,6 +77,7 @@
     padding: "10px 16px", minHeight: "44px", borderRadius: "8px", border: "none",
     background: GOLD, color: NAVY, fontWeight: "700", cursor: "pointer"
   }, "Send");
+  send.setAttribute("type", "submit");
   form.appendChild(input);
   form.appendChild(send);
 
