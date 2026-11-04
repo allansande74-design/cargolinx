@@ -114,13 +114,13 @@ All five Meta models the desk uses have a button a judge can press. Receipts are
 - **Muse Voice Transcribe 1.0** — the *Record voice note* button. Receipts: 30 Oct 2026 (HTTP 200, 312.1 ms); 3 Nov 2026 (a 12.4 s voice note transcribed in 3,922 ms with every spoken element present).
 - **SAM 3.1** — *Count cargo from photo*. Receipts: 30 Oct 2026 (HTTP 200, 420.8 ms); 3 Nov 2026 (15 pallets and 64 cartons found, each as a box and a mask).
 - **Muse Wonder 1.0** — the Intelligence screen, where it is the *judge's pick* among three drafts. Receipt: two direct calls on 31 Oct 2026, HTTP 200 (`docs/meta-call-summary.json`).
-- **Muse Image 1.0** — the Intelligence screen, *Draw a loaded truck*. Wired to the same Worker route; see the note below on its receipt.
+- **Muse Image 1.0** — the Intelligence screen, *Draw a loaded truck*. Receipt: 4 Nov 2026, the button pressed once on the live desk returned a picture in about 15 seconds with no error (`docs/evidence/muse-image-loaded-truck-2026-11-04.jpg`; the picture is Muse Image's drawing, with the Altovex logo added afterwards for this record).
 
 Totals from the bridge log, 30 Oct–1 Nov 2026: 207 calls, 143 served by Meta direct, 117 of those HTTP 200 (`docs/META-CALLS.md`, `docs/meta-call-summary.json`). The key was rejected on 2 Nov and working again on 3 Nov; both are recorded, not hidden. Where the direct line fails the UI reports the labelled fallback and the app keeps running on the deterministic engine. No model sets a price or a date.
 
 ## Not yet verified
 
-- A stored receipt for Muse Image 1.0 and for the Muse Wonder judge on the live desk: both are wired, but this repository holds no dated receipt for either beyond the 31 Oct Wonder calls above.
+- A stored receipt for the Muse Wonder judge on the live desk: it is wired, but this repository holds no dated receipt for it beyond the 31 Oct Wonder calls above.
 - Lane speeds are planner defaults, marked as such in the interface; replace them with the operator's
   own run data before any ETA is promised to a client.
 - The VAT base composition (CIF + duty + excise + IDF + RDL) is a modelling choice; confirm against a
