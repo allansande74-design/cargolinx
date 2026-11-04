@@ -10,6 +10,7 @@
 
 import { parseRange, isMediaPath } from "./byte-range.mjs";
 import { handle as handleMeta } from "./meta-proxy.mjs";
+import { chat as amandaChat } from "./amanda.mjs";
 import { health, report } from "./health.mjs";
 
 const MEDIA_HEADERS = {
@@ -25,6 +26,11 @@ export default {
     // in the bundle a phone downloads.
     if (url.pathname === "/api/meta" || url.pathname.startsWith("/api/meta/")) {
       return handleMeta(request, env);
+    }
+
+    // Amanda answers clients here: figures computed in the Worker, words from the model.
+    if (url.pathname === "/api/amanda/chat") {
+      return amandaChat(request, env);
     }
 
     // Alive? and: something broke on the desk. Both answer without touching the model key.

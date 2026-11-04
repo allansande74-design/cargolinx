@@ -1,0 +1,220 @@
+// Amanda — the desk's own assistant, answering on the site.
+//
+// Two halves, deliberately separate.
+//
+// The figures come from the engine: a lane's kilometres, its border count, its planning transit and
+// a cost-plus freight price are computed here, in code, and handed to the model as facts. The words
+// come from Muse Spark, whose only job is to explain those facts to the client in their own language.
+// A model that is asked to invent a distance will invent one; a model that is handed the distance
+// will explain it. That is the whole design.
+//
+// What Amanda will not do: confirm a booking, promise a sailing, quote under the floor, or discuss
+// margin. Those are the desk's decisions, made by a person, and the prompt says so.
+
+import { LANES, laneKm, laneHours, borderCount, laneBetween } from "../engine/lanes.mjs";
+import { POLICY_VALUES } from "../engine/policy-values.mjs";
+
+const UPSTREAM = "https://api.meta.ai/v1/chat/completions";
+const MODEL = "muse-spark-1.3";
+const MAX_TOKENS = 700;
+const LIMIT = { windowMs: 10 * 60 * 1000, max: 20 };
+const hits = new Map();
+
+/** Cost-plus on the tarmac: the rate card basis the desk quotes from, before any concession. */
+const RATE = { perKmUsd: 1.85, perBorderUsd: 250, grossUp: 0.82 };
+
+const CITIES = [
+  "Mombasa", "Nairobi", "Kampala", "Kigali", "Arusha", "Dar es Salaam", "Dodoma", "Mwanza",
+  "Jinja", "Eldoret", "Nakuru", "Kisumu", "Bujumbura", "Goma", "Lusaka", "Lilongwe",
+];
+
+const SYSTEM = `You are Amanda, the freight desk assistant at Altovex Global Logistics in Nairobi. You answer clients on the company's own site, in their language, in short plain sentences.
+
+What the company does: sourcing in Asia and the Gulf, ocean freight into Mombasa, customs clearing, warehousing in Nairobi, and road freight onward to Uganda, Rwanda, Tanzania and eastern DR Congo. Door to door, DDP, on one document.
+
+How you answer:
+- Use the FACTS block for every number. Never compute, round or invent a figure that is not in it. If a number the client needs is missing, say what you need and ask for it: origin, destination, weight or volume, and cargo.
+- A quote you give is indicative and subject to confirmation by the desk. Say so once, plainly, without hedging every sentence.
+- You may explain the clearing steps, the documents, transit times, and what happens at a border.
+- You never discuss our margin, our cost, our suppliers, or internal policy. If asked, say the commercial terms come from the desk.
+- You never confirm a booking, a sailing or a price in writing. Say the desk will confirm.
+- Where the question is outside freight and trade, say so in one line and offer what you can do.
+- Keep it under 120 words unless the client asks for detail. No bullet lists longer than five lines.
+- Escalate to the desk when the client asks for a firm quote, a contract, credit terms, or a complaint: +254 718 554 383, altovexgl@gmail.com.
+
+The platform is at MVP stage: the desk, the pricing engine, tracking and the export desk run today; accounts, live carrier feeds and the client portal are being built. Say that only if asked about a feature you cannot see.`;
+
+function limited(ip) {
+  const now = Date.now();
+  const row = hits.get(ip) ?? { count: 0, reset: now + LIMIT.windowMs };
+  if (now > row.reset) { row.count = 0; row.reset = now + LIMIT.windowMs; }
+  row.count += 1;
+  hits.set(ip, row);
+  if (hits.size > 2000) for (const [k, v] of hits) if (now > v.reset) hits.delete(k);
+  return row.count > LIMIT.max;
+}
+
+const clean = (s) => String(s ?? "").replace(/\s+/g, " ").trim();
+
+/** Cities named in the text, longest first so "Dar es Salaam" is not read as "Dar". */
+function citiesIn(text) {
+  const found = [];
+  for (const city of [...CITIES].sort((a, b) => b.length - a.length)) {
+    if (new RegExp(`\\b${city.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(text)) found.push(city);
+  }
+  return found;
+}
+
+/** Weight in kilograms, from "27t", "27 tonnes", "400 kg", "2,000 kilos". */
+function weightKgIn(text) {
+  const t = text.toLowerCase().replace(/,/g, "");
+  const tonnes = t.match(/(\d+(?:\.\d+)?)\s*(?:t|tonnes?|tons?)\b/);
+  if (tonnes) return Math.round(Number(tonnes[1]) * 1000);
+  const kg = t.match(/(\d+(?:\.\d+)?)\s*(?:kg|kgs|kilos?|kilograms?)\b/);
+  if (kg) return Math.round(Number(kg[1]));
+  return null;
+}
+
+/** The lane fact for a question, when it names two cities we run. */
+export function laneFact(text) {
+  const cities = citiesIn(text);
+  if (cities.length < 2) return null;
+  for (let i = 0; i < cities.length; i += 1) {
+    for (let j = i + 1; j < cities.length; j += 1) {
+      const lane = laneBetween(cities[i], cities[j]);
+      if (!lane) continue;
+      const legs = lane.legs;
+      const km = laneKm(legs);
+      const hours = laneHours(legs);
+      const borders = borderCount(legs);
+      if (!(km > 0)) continue;
+      return {
+        from: cities[i],
+        to: cities[j],
+        km: Math.round(km),
+        transitHours: Math.round(hours),
+        borders,
+      };
+    }
+  }
+  return null;
+}
+
+/** Cost-plus freight for a lane, at the desk's rate-card basis. */
+export function freightPrice(lane, weightKg = null) {
+  const base = lane.km * RATE.perKmUsd + lane.borders * RATE.perBorderUsd;
+  const price = Math.round(base / RATE.grossUp / 10) * 10;
+  const perTonne = weightKg ? Math.round((price / (weightKg / 1000)) * 100) / 100 : null;
+  return { priceUsd: price, perTonneUsd: perTonne };
+}
+
+const DOCS = {
+  import:
+    "For an import through Mombasa the file is: bill of lading, commercial invoice, packing list, " +
+    "certificate of origin, IDF, and a PVoC certificate of conformity for regulated goods. Food and " +
+    "plant cargo add a phytosanitary certificate and an import permit; the port health office clears them.",
+  export:
+    "For an export the file is: commercial invoice, packing list, certificate of origin, export " +
+    "declaration, and the phytosanitary or health certificate the destination requires. Coffee needs " +
+    "a UCDA licence; fish needs the fisheries authority's health certificate and the exporter's " +
+    "registration with the destination's competent authority.",
+};
+
+/** Everything the model is allowed to treat as fact, as a compact block. */
+export function buildFacts(text, weightKg) {
+  const lane = laneFact(text);
+  const lines = [];
+  if (lane) {
+    const p = freightPrice(lane, weightKg);
+    lines.push(`lane ${lane.from} to ${lane.to}: ${lane.km} km, ${lane.transitHours} h driving, ${lane.borders} border crossing(s)`);
+    lines.push(`indicative freight for that lane: USD ${p.priceUsd} per truck, one vehicle, excluding duty, clearing and last mile`);
+    if (weightKg && p.perTonneUsd) lines.push(`weight given by the client: ${weightKg} kg, which is USD ${p.perTonneUsd} per tonne on that rate`);
+    lines.push("this is the road leg only; clearing, duty and warehousing are quoted separately");
+  } else if (citiesIn(text).length === 1) {
+    lines.push(`the client names one place (${citiesIn(text)[0]}); the other end of the journey is not stated`);
+  }
+  if (/document|paperwork|clear|pvoc|phytosanitary|permit|certificate/i.test(text)) {
+    lines.push(`documents, import: ${DOCS.import}`);
+    lines.push(`documents, export: ${DOCS.export}`);
+  }
+  if (/ddp/i.test(text)) {
+    lines.push("terms: DDP means we carry the cargo to the client's door with duty and clearing paid; demurrage and storage caused by the client's delay are charged at cost");
+  }
+  if (!lines.length) lines.push("no lane, weight or document was named in the question; nothing computed");
+  return lines;
+}
+
+async function askModel(env, messages) {
+  const key = env.META_API_KEY;
+  if (!key) throw new Error("no model key");
+  const body = {
+    model: MODEL,
+    messages,
+    max_tokens: MAX_TOKENS,
+    temperature: 0.2,
+    reasoning_effort: "minimal",
+  };
+  const res = await fetch(UPSTREAM, {
+    method: "POST",
+    headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`upstream ${res.status}`);
+  const out = await res.json();
+  const text = clean(out?.choices?.[0]?.message?.content ?? "");
+  if (!text) throw new Error("empty answer");
+  return { text, model: out?.model ?? MODEL };
+}
+
+export async function chat(request, env) {
+  if (request.method !== "POST") return json({ error: "POST only" }, 405);
+
+  const ip = request.headers.get("cf-connecting-ip") ?? "unknown";
+  if (limited(ip)) return json({ error: "Too many questions just now. Please try again in a few minutes." }, 429);
+
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "JSON body required" }, 400); }
+
+  const history = Array.isArray(body?.messages) ? body.messages : [];
+  const turns = history
+    .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+    .slice(-8)
+    .map((m) => ({ role: m.role, content: clean(m.content).slice(0, 1500) }));
+  const lastUser = [...turns].reverse().find((m) => m.role === "user");
+  if (!lastUser) return json({ error: "a question is required" }, 400);
+
+  const weightKg = weightKgIn(lastUser.content);
+  const facts = buildFacts(turns.map((m) => m.content).join(" \n "), weightKg);
+  const context = clean(body?.context?.page ?? "").slice(0, 80);
+
+  const messages = [
+    { role: "system", content: SYSTEM },
+    { role: "system", content: `FACTS (the only numbers you may use):\n- ${facts.join("\n- ")}${context ? `\n- the client is on the ${context} screen of the desk` : ""}` },
+    ...turns,
+  ];
+
+  const started = Date.now();
+  try {
+    const { text, model } = await askModel(env, messages);
+    return json({ reply: text, facts, model, ms: Date.now() - started });
+  } catch (err) {
+    // A desk that cannot reach the model still answers: the figures are computed here, not invented.
+    const fallback = facts.join("\n");
+    return json({
+      reply: `The desk's assistant is briefly offline, so here is what is already computed:\n${fallback}\nThe desk will confirm the rest: +254 718 554 383.`,
+      facts,
+      degraded: true,
+      reason: String(err.message ?? err),
+      ms: Date.now() - started,
+    }, 200);
+  }
+}
+
+function json(obj, status = 200) {
+  return new Response(JSON.stringify(obj), {
+    status,
+    headers: { "content-type": "application/json", "cache-control": "no-store" },
+  });
+}
+
+export { SYSTEM, DOCS, RATE };
