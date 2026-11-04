@@ -1,4 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React
+import TimeBar from './components/TimeBar';
+import { useEffect, useMemo, useRef, useState } from "react";
 import { landedCost, quote, floorPrice, KE_RATES } from "../engine/landed.mjs";
 import { planEta, applyEvent } from "../engine/eta.mjs";
 import { STORES, all, put, saveShipment, saveOrder, saveQueued, savePhoto, getPhoto, newId, kvGet, kvSet, seedDemoJobs } from "./lib/db.js";
@@ -172,7 +174,7 @@ function Desk({ onSignOut }) {
           </div>
           <div className="demo-note">
             <span className="demo-dot" aria-hidden="true" />
-            Demo workspace — sample policy settings (25% target, 15% floor), not the operator's
+            Demo workspace — utilizing sample policy settings. All internal commercial margins are strictly confidential and managed by the admin.
           </div>
           <button className="ghost small" onClick={onSignOut}>Sign out</button>
         </div>
@@ -221,7 +223,7 @@ function Desk({ onSignOut }) {
         </main>
 
         <footer>
-          Figures are computed by the local engine from dated statutory rates; model output explains, never prices.
+          Figures are computed by the local engine from dated statutory rates. This is an MVP working towards a full Trade-Logistics Ecosystem; live tracking via Loconav, video telematics, transit insurance, and escrow settlement bridges are arriving in v3.0 (launching in few weeks).
           {model.live ? "" : " Model-assisted steps are disabled until a Meta key is configured."}
         </footer>
       </div>
@@ -342,12 +344,15 @@ export default function App() {
   }
 
   const shell = (node) => (
-    <div style={{ paddingTop: 46 }}>
-      <BrandBar />
+    <>
+      <TimeBar />
+      <div style={{ paddingTop: 46 }}>
+        <BrandBar />
       {node}
       <AmandaBar />
     </div>
-  );
+  </>
+);
 
   if (route === "contact") return shell(<ContactPage />);
   if (route === "pack") return shell(<PackView />);
