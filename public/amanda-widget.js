@@ -91,9 +91,9 @@
   var videoBtn = el("button", {
     fontSize: "12px", padding: "7px 10px", borderRadius: "8px", border: "1px solid #c3cfdd",
     background: "#eef3f9", color: NAVY, cursor: "pointer", minHeight: "34px"
-  }, "🎥 Video");
+  }, "🎥 Video — by appointment");
   videoBtn.setAttribute("type", "button");
-  videoBtn.setAttribute("aria-label", "Send a video");
+  videoBtn.setAttribute("aria-label", "Video call with the desk");
 
   var photoInput = el("input", { display: "none" });
   photoInput.type = "file";
@@ -358,7 +358,9 @@
   /* ---------------------------------------------------------------- photo and video */
 
   photoBtn.addEventListener("click", function () { photoInput.click(); });
-  videoBtn.addEventListener("click", function () { videoInput.click(); });
+  videoBtn.addEventListener("click", function () {
+    note("Live video is by authentication — the CTO joins by appointment. Call the desk on +254 718 554 383 to book it.");
+  });
 
   photoInput.addEventListener("change", function () {
     var file = photoInput.files && photoInput.files[0];

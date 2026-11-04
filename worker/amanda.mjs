@@ -78,24 +78,99 @@ function weightKgIn(text) {
 }
 
 /** The lane fact for a question, when it names two cities we run. */
+
+/**
+ * Every road leg the engine knows, as a graph.
+ *
+ * The lane table names four routes, but its legs join Nairobi, Mombasa, Eldoret, Malaba, Kampala and
+ * Kigali — so a client who asks Mombasa to Kigali can be answered from the same measured legs that
+ * price Mombasa to Kampala, composed rather than guessed. Without this the desk says "I have no
+ * figures" for a corridor it runs every week.
+ */
+const GRAPH = (() => {
+  const g = new Map();
+  const add = (a, b, km, kph, border) => {
+    if (!g.has(a)) g.set(a, []);
+    g.get(a).push({ to: b, km, kph, border });
+  };
+  for (const legs of Object.values(LANES)) {
+    for (const l of legs) {
+      const parts = String(l.name ?? "").split(" - ");
+      if (parts.length !== 2) continue;
+      const [a, b] = parts;
+      const km = Number(l.km) || 0;
+      const kph = Number(l.speedKph) || 50;
+      add(a, b, km, kph, !!l.border);
+      add(b, a, km, kph, !!l.border);
+    }
+  }
+  return g;
+})();
+
+/** Shortest road distance between two cities, over the engine's own legs. */
+export function pathBetween(from, to) {
+  if (!GRAPH.has(from) || !GRAPH.has(to)) return null;
+  const best = new Map([[from, { km: 0, hours: 0, borders: 0, prev: null }]]);
+  const seen = new Set();
+  for (;;) {
+    let cur = null;
+    for (const [city, row] of best) {
+      if (!seen.has(city) && (cur === null || row.km < best.get(cur).km)) cur = city;
+    }
+    if (cur === null || cur === to) break;
+    seen.add(cur);
+    const here = best.get(cur);
+    for (const edge of GRAPH.get(cur) ?? []) {
+      const row = {
+        km: here.km + edge.km,
+        hours: here.hours + edge.km / (edge.kph || 50),
+        borders: here.borders + (edge.border ? 1 : 0),
+        prev: cur,
+      };
+      const old = best.get(edge.to);
+      if (!old || row.km < old.km) best.set(edge.to, row);
+    }
+  }
+  if (!best.has(to)) return null;
+  const hops = [];
+  let at = to;
+  while (at && at !== from) { hops.unshift(at); at = best.get(at)?.prev ?? null; }
+  const row = best.get(to);
+  return { km: Math.round(row.km), hours: row.hours, borders: row.borders, via: hops.slice(0, -1) };
+}
+
 export function laneFact(text) {
   const cities = citiesIn(text);
+  const lower = String(text ?? "").toLowerCase();
+  const order = (c) => lower.indexOf(c.toLowerCase());
   if (cities.length < 2) return null;
   for (let i = 0; i < cities.length; i += 1) {
     for (let j = i + 1; j < cities.length; j += 1) {
-      const lane = laneBetween(cities[i], cities[j]);
-      if (!lane) continue;
-      const legs = lane.legs;
-      const km = laneKm(legs);
-      const hours = laneHours(legs);
-      const borders = borderCount(legs);
-      if (!(km > 0)) continue;
+      // Answer in the direction the client asked: "Kampala to Nairobi" is not "Nairobi to Kampala".
+      const [from, to] = order(cities[i]) <= order(cities[j]) ? [cities[i], cities[j]] : [cities[j], cities[i]];
+      const lane = laneBetween(from, to);
+      if (lane) {
+        const legs = lane.legs;
+        const km = laneKm(legs);
+        if (!(km > 0)) continue;
+        return {
+          from,
+          to,
+          km: Math.round(km),
+          transitHours: Math.round(laneHours(legs)),
+          borders: borderCount(legs),
+          via: [],
+        };
+      }
+      const path = pathBetween(from, to);
+      if (!path || !(path.km > 0)) continue;
       return {
-        from: cities[i],
-        to: cities[j],
-        km: Math.round(km),
-        transitHours: Math.round(hours),
-        borders,
+        from,
+        to,
+        km: path.km,
+        transitHours: Math.round(path.hours),
+        borders: path.borders,
+        via: path.via,
       };
     }
   }

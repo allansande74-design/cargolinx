@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { laneFact, freightPrice, buildFacts, chat } from "../worker/amanda.mjs";
+import { laneFact, freightPrice, buildFacts, chat, pathBetween } from "../worker/amanda.mjs";
 
 const ask = (text, extra = {}) =>
   new Request("https://desk.test/api/amanda/chat", {
@@ -168,4 +168,23 @@ test("something that is not audio is refused with a straight answer, not a guess
   const out = await res.json();
   assert.equal(res.status, 422);
   assert.match(out.error, /audio/i);
+});
+
+// ---------------------------------------------------------------------------- composed lanes
+
+test("a corridor the lane table does not name is composed from its measured legs, not refused", () => {
+  const lane = laneFact("How long does Mombasa to Kigali take for 20 tonnes?");
+  assert.ok(lane, "Mombasa to Kigali should resolve over the engine's own legs");
+  assert.equal(lane.from, "Mombasa");
+  assert.equal(lane.to, "Kigali");
+  assert.ok(lane.km > 1600 && lane.km < 1800, `expected about 1,695 km, got ${lane.km}`);
+  assert.equal(lane.borders, 2);
+  assert.ok(lane.via.includes("Kampala"), "the route is stated as passing Kampala");
+});
+
+test("the lane is answered in the direction the client asked", () => {
+  const back = laneFact("Kampala to Nairobi, 27 tonnes");
+  assert.equal(back.from, "Kampala");
+  assert.equal(back.to, "Nairobi");
+  assert.equal(back.km, 700);
 });

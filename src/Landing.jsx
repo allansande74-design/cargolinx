@@ -242,6 +242,10 @@ export default function Landing({ onEnter, onSignIn }) {
         <div className="wrap">
           <span className="logo"><span className="mark">AX</span><strong style={{ color: "var(--ink)" }}>Altovex CargoLinx</strong></span>
           <span>Altovex Global Logistics · Nairobi, Kenya</span>
+          <span style={{ display: "block", flexBasis: "100%", fontSize: 12, opacity: 0.75, marginTop: 6 }}>
+            Owned by Altovex Global Logistics, part of the Dreamteam Consulting group · one platform,
+            in production, built for a million users.
+          </span>
           <span style={{ marginLeft: "auto" }}>Figures are computed locally from dated statutory rates.</span>
         </div>
       </footer>

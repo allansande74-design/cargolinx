@@ -45,6 +45,8 @@ export default function ContactPage() {
               <a style={link} href="mailto:altovexgl@gmail.com">altovexgl@gmail.com</a>
             </p>
             <p style={row}>P.O. Box 3515-00100, Nairobi, Kenya</p>
+
+          <p style={row}>CargoLinx is owned and operated by Altovex Global Logistics, part of the Dreamteam Consulting group. The group's digital ecosystem runs in production today. Winning this hackathon's resources goes into completing, operationalising and commercialising it, with a target of one million users in five years.</p>
             <p style={row}>Cooperative Bank of Kenya · SWIFT COOPKENA</p>
             <p style={row}>M-PESA paybill 400200 · account 40045731</p>
           </div>

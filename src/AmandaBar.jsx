@@ -226,6 +226,12 @@ export default function AmandaBar({ contextHint = "", country = "KE", lang = "en
     }
   }
 
+  /** Live video is opened by appointment with the CTO; until the avatar channel ships, a clip is a
+   *  file, not a call, and the panel says so rather than implying a call is ringing. */
+  function askForVideo() {
+    setNote("Live video is by authentication — the CTO joins by appointment. Call the desk on +254 718 554 383 to book it; the video desk itself is being finished.");
+  }
+
   async function onVideo(e) {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -322,7 +328,8 @@ export default function AmandaBar({ contextHint = "", country = "KE", lang = "en
               {micOn ? "◼ Stop" : "🎤 Voice"}
             </button>
             <button type="button" onClick={() => photoInput.current?.click()} aria-label="Send a photograph" style={mediaBtn}>📷 Photo</button>
-            <button type="button" onClick={() => videoInput.current?.click()} aria-label="Send a video" style={mediaBtn}>🎥 Video</button>
+            <button type="button" onClick={askForVideo} aria-label="Video call with the desk"
+              style={{ ...mediaBtn, opacity: 0.85 }}>🎥 Video — by appointment</button>
             <input ref={photoInput} type="file" accept="image/*" onChange={onPhoto} style={{ display: "none" }} />
             <input ref={videoInput} type="file" accept="video/*" onChange={onVideo} style={{ display: "none" }} />
           </div>
