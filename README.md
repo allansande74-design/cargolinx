@@ -1,7 +1,7 @@
 ## Live and demo
 
 - **Live desk:** https://altovexcargolinx.allansande74.workers.dev/ — the single canonical deployment, on Cloudflare, no login.
-- **Watch the demo film:** https://altovexcargolinx.allansande74.workers.dev/demo/ — also in the repo at `public/demo/CargoLinx-demo-3Nov2026.mp4` (68.8 s, well inside the 3-minute cap)
+- **Watch the demo film (the submitted video):** https://allansande74-design.github.io/cargolinx/demo/ — file `cargolinx-demo-entry-153s.mp4`, 2 min 33.8 s (153.8 s), inside the 3-minute cap. A shorter 68.8 s cut, `CargoLinx-demo-3Nov2026.mp4`, is kept in the repo under `public/demo/` and plays at https://altovexcargolinx.allansande74.workers.dev/demo/
 - **Commit window:** 27 October to 4 November 2026, full log in `git log --since=2026-10-27`
 
 # CargoLinx v2 — offline freight desk for East African corridors
@@ -43,7 +43,7 @@ explain a quote. **No model ever sets a price or a date.**
   duplicate, local record intact.
 - Engine maths, refusal below the margin floor, ETA change history, outbox idempotency, conflict
   resolution, document content, tariff and PVoC rules, dossier guards, account scoping, order-stage
-  guards, goods-received variance and LocoNav payload mapping — 78 tests (`npm test`).
+  guards, goods-received variance and LocoNav payload mapping — **562 tests, 0 failing** (`npm test`, run on 4 November 2026 against commit `e240416`).
 
 ## Tariff, conformity and clearance (added 29 October 2026)
 
@@ -66,7 +66,7 @@ explain a quote. **No model ever sets a price or a date.**
 
 ### Verified against a real run (29 October 2026)
 
-Account opened with net 30 and a KES 1,000,000 limit; a KES 2,400,000 order was **held** ("exceeds credit headroom by 1,400,000"); a KES 600,000 order was accepted; the pipeline was walked stage by stage to delivered, with the guards firing on cue (delivery refused until a signatory was named); dispatch created a last-mile job against vehicle KDG 123A; a GPS payload parsed to a valid fix and was correctly reported as stale at 4,688 minutes old. 78 tests pass.
+Account opened with net 30 and a KES 1,000,000 limit; a KES 2,400,000 order was **held** ("exceeds credit headroom by 1,400,000"); a KES 600,000 order was accepted; the pipeline was walked stage by stage to delivered, with the guards firing on cue (delivery refused until a signatory was named); dispatch created a last-mile job against vehicle KDG 123A; a GPS payload parsed to a valid fix and was correctly reported as stale at 4,688 minutes old.
 
 ## Sourcing and dropship plugins (added 29 October 2026)
 
@@ -78,7 +78,7 @@ Studied from the platforms' own documentation:
 
 Built as plugins with a declared contract (`engine/plugins.mjs`): a plugin cannot report ready without the credentials its capabilities require, an undeclared capability is refused, and a dry run prints the exact request that would be sent rather than a fabricated catalogue. `engine/sourcing.mjs` turns a plain-language request into a brief, selects the price tier for the quantity and states a below-MOQ shortfall, lands the cost per unit, scores and ranks offers on quantity, budget, lead time, certificates and whether they ship here, runs the stock-versus-dropship arithmetic, and drafts an RFQ.
 
-Verified in the browser: "500 pcs solar panels under 120 usd to Kenya, HS 8541.43" parsed to product, quantity, budget, destination and HS hint; two offers ranked (shortlist 100, consider 51 with below-MOQ and budget reasons); the dropship-versus-stock arithmetic recommended holding stock at 23.02 against 40.80 per unit with KES 2.99M tied up over four months of cover; the Alibaba plugin's dry run reported `POST openapi.alibaba.com`, signed HMAC-SHA256, credentials present false. 101 tests pass.
+Verified in the browser: "500 pcs solar panels under 120 usd to Kenya, HS 8541.43" parsed to product, quantity, budget, destination and HS hint; two offers ranked (shortlist 100, consider 51 with below-MOQ and budget reasons); the dropship-versus-stock arithmetic recommended holding stock at 23.02 against 40.80 per unit with KES 2.99M tied up over four months of cover; the Alibaba plugin's dry run reported `POST openapi.alibaba.com`, signed HMAC-SHA256, credentials present false.
 
 **Not modelled:** any de-minimis duty or VAT threshold for small parcels. No threshold is applied because none is verified for these lanes, and a wrong threshold silently misprices every parcel.
 
@@ -92,7 +92,7 @@ Verified in the browser: "500 pcs solar panels under 120 usd to Kenya, HS 8541.4
 - **Stock is a promise only when it has a bin and a lot.** Receiving requires a bin; position separates on hand, allocated, expired and available; allocation is first-expiry-first-out, skips expired lots and states why, and reports a shortfall instead of silently part-filling.
 - **The pick list is ordered by bin** so a picker walks the aisle once, and a delivery note and packing list print from the same allocation — the delivery note carrying the platform's name, the invoice carrying the seller's.
 
-Verified in the browser: invoice INV-2610-0001 raised for 600,000 plus 96,000 VAT with "proof of delivery not yet on file" printed on it; a 300,000 M-PESA payment left 396,000 part paid and moved the ageing bucket; 60 units received into bin NBO-01-01-01 under lot L-2026-11; 50 allocated to the order, producing pick line 1 at that bin, leaving 10 on hand, 50 allocated and zero available, with the statement "No available stock of SP450 at the Nairobi warehouse". 121 tests pass.
+Verified in the browser: invoice INV-2610-0001 raised for 600,000 plus 96,000 VAT with "proof of delivery not yet on file" printed on it; a 300,000 M-PESA payment left 396,000 part paid and moved the ageing bucket; 60 units received into bin NBO-01-01-01 under lot L-2026-11; 50 allocated to the order, producing pick line 1 at that bin, leaving 10 on hand, 50 allocated and zero available, with the statement "No available stock of SP450 at the Nairobi warehouse".
 
 ## Messages, suppliers and stock control (added 29 October 2026)
 
@@ -105,12 +105,22 @@ Verified in the browser: invoice INV-2610-0001 raised for 600,000 plus 96,000 VA
 
 Verified in the browser on the live build: a delivery message queued, approved and sent with the recipient masked as +254\*\*\*\*1222; a supplier refused verification with no reference and accepted with a KRA PIN, scoring 75; a purchase order printed for 170,000 with no VAT line; 40 units received, a count of 36 recorded as short by 4, two damaged units written off, and the stock position and the shrinkage report agreeing at 27 units and 156,000 lost.
 
+## Meta models: verified live, with receipts in this repository
+
+All five Meta models the desk uses have a button a judge can press. Receipts are in `docs/evidence/` and `docs/`
+(raw responses, status codes, latencies and token counts); the narrative is `docs/META-CALLS.md`.
+
+- **Muse Spark 1.3** — *Explain this quote*, *Read the note into fields*, and the *Ask Amanda* assistant on every page. Receipts: 30 Oct 2026 (lane match, HTTP 200, 248.5 ms, `docs/evidence/meta_live_calls.json`); 3 Nov 2026 (rate schedule 9,384 ms; condition note from a photograph 6,106 ms; quote explanation 4,236 ms; `docs/meta-live-calls-2026-11-03.json`, `docs/meta-live-calls-2026-11-03-vision.json`).
+- **Muse Voice Transcribe 1.0** — the *Record voice note* button. Receipts: 30 Oct 2026 (HTTP 200, 312.1 ms); 3 Nov 2026 (a 12.4 s voice note transcribed in 3,922 ms with every spoken element present).
+- **SAM 3.1** — *Count cargo from photo*. Receipts: 30 Oct 2026 (HTTP 200, 420.8 ms); 3 Nov 2026 (15 pallets and 64 cartons found, each as a box and a mask).
+- **Muse Wonder 1.0** — the Intelligence screen, where it is the *judge's pick* among three drafts. Receipt: two direct calls on 31 Oct 2026, HTTP 200 (`docs/meta-call-summary.json`).
+- **Muse Image 1.0** — the Intelligence screen, *Draw a loaded truck*. Wired to the same Worker route; see the note below on its receipt.
+
+Totals from the bridge log, 30 Oct–1 Nov 2026: 207 calls, 143 served by Meta direct, 117 of those HTTP 200 (`docs/META-CALLS.md`, `docs/meta-call-summary.json`). The key was rejected on 2 Nov and working again on 3 Nov; both are recorded, not hidden. Where the direct line fails the UI reports the labelled fallback and the app keeps running on the deterministic engine. No model sets a price or a date.
+
 ## Not yet verified
 
-- The Meta model calls (photo counting, transcription, lane matching, explanation) run
-  direct-first against api.meta.ai (verified live 31 Oct 2026; receipts in
-  swarm/hackathon/evidence/meta_tool_runs.jsonl). Where the direct line fails the UI
-  reports the labelled fallback and the app keeps running on the deterministic engine.
+- A stored receipt for Muse Image 1.0 and for the Muse Wonder judge on the live desk: both are wired, but this repository holds no dated receipt for either beyond the 31 Oct Wonder calls above.
 - Lane speeds are planner defaults, marked as such in the interface; replace them with the operator's
   own run data before any ETA is promised to a client.
 - The VAT base composition (CIF + duty + excise + IDF + RDL) is a modelling choice; confirm against a
@@ -161,23 +171,18 @@ What is verified:
 - The export corridor runs all the way to China: the reversed road to Mombasa, then the sea leg, with the
   sea distance computed from the two ports' coordinates and the Chinese duty named as not held.
 - Export runs the same lanes backwards: the lane table is reversed rather than retyped, and the quote stops at
-  the destination port with the destination's duty printed as missing rather than guessed. See `docs/EXPORT.md`.
+  the destination port with the destination's duty printed as missing rather than guessed. Exports are priced
+  **CIF to the destination port**; destination duties, taxes, port charges and delivery are the importer's. See `docs/EXPORT.md`.
 - [x] A licence is in the tree — MIT in `LICENSE` (© 2026 Allan Sande, Altovex Global Logistics), named in the Licence section above.
 - A photograph of the load becomes a *condition note* a claims clerk can file: what is visible and where, with cause, names and money refused by instruction. 
 - [x] `docs/ROUTING.md` answers the question the matcher does not: in what order a vehicle visits its stops. Exact under nine stops, Clarke–Wright with 2-opt and or-opt above that — measured at 6.8% shorter than an unaided order at six stops and 14.7% at forty, with a 0.00% gap to the provable optimum wherever the optimum is knowable.
 - [x] `docs/OPERATIONS.md` is the page you read at 2 a.m.: how to tell the desk is up (`/api/health`), where faults land (`/api/errors` and `wrangler tail`), how to deploy and roll back, how to rotate the Meta key, and — written down rather than hidden — the five gaps that remain.
 - [x] `docs/CONTRIBUTION.md` records what was built, what is measured, and what is explicitly not
       claimed.
-- [x] The Meta model layer is live direct: muse-spark-1.3 and muse-wonder-1.0 answer on
-      api.meta.ai (verified 31 Oct 2026; chat 1716 ms, doc extract 9376 ms; receipts in
-      swarm/hackathon/evidence/meta_tool_runs.jsonl). Photo counting, transcription, lane
-      matching and explanation run direct-first with labelled fallback.
-
-What is still missing before this can be submitted:
-
-- [x] A public repository URL — https://github.com/allansande74-design/cargolinx (verified HTTP 200).
-- [ ] A deployed submission URL — build in progress; judges open the live URL from the status report.
-- [x] A Meta model key — live 31 Oct 2026; real calls receipted in swarm/hackathon/evidence/meta_tool_runs.jsonl.
+- [x] The Meta model layer is live direct: muse-spark-1.3, muse-voice-transcribe-1.0 and sam-3.1 answered
+      on api.meta.ai on 30 Oct and 3 Nov 2026, and muse-wonder-1.0 on 31 Oct (receipts in `docs/evidence/`
+      and `docs/`, listed above). Photo counting, transcription, lane matching and explanation run
+      direct-first with labelled fallback.
 
 ## Network scale-up: 26 countries, bloc corridors, fleet tiers
 

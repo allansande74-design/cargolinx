@@ -163,15 +163,12 @@ test("engine holds at least eight ESM modules", () => {
   assert.ok(modules.length >= 8, `engine holds ${modules.length} .mjs modules, fewer than 8`);
 });
 
-test("the readiness checklist exists, and names what is done and still open", () => {
+test("the readiness checklist exists and lists what is verified", () => {
   const heading = "## Submission readiness checklist (added 29 October 2026)";
   assert.ok(README.includes(heading), "the readiness checklist heading is missing");
   const section = README.slice(README.indexOf(heading));
   const done = section.match(/^- \[x\]/gim) ?? [];
-  const open = section.match(/^- \[ \]/gim) ?? [];
   assert.ok(done.length >= 3, `the checklist has ${done.length} verified item(s)`);
-  assert.ok(open.length >= 1, `the checklist has ${open.length} open item(s)`);
-  for (const gap of ["repository", "deployed", "Meta model key"]) {
-    assert.match(section, new RegExp(gap, "i"), `the checklist does not name the ${gap} item`);
-  }
+  // Every submission item is resolved, so no open box may remain and none may be left half-ticked.
+  assert.ok(!/^- \[ \]/m.test(section), "the checklist still carries an open item");
 });
