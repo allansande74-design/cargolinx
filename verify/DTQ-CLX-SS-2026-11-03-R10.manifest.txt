@@ -1,0 +1,14 @@
+MANIFEST v1
+DOC-ID DTQ-CLX-SS-2026-11-03-R10
+ISSUER Dreamteam Consulting Company (DreamTeQ), Nairobi, Kenya
+PREPARED-BY Amanda, Master Orchestrator
+AUTHORISED-BY Sande Allan, Founder & CTO
+SUBJECT CargoLinx submission copy-paste sheet, Meta Global AI Developer Hackathon 2026
+ISSUED 04 Nov 2026, 07:58 EAT
+SOURCE-SHA256 0133635711c763a2b9228e979fff165521da68d4a62d1c6a38e48ebfa8de52f8
+LINES 586
+DEPLOY 6c5addc / Cloudflare a4c01a8c-926e-4fb0-957f-eee532ce1075
+SUITE 557 PASSING, 0 FAILING
+MODEL DESK LIVE, MUSE-SPARK-1.3 ANSWERING TODAY
+MODEL-BRAIN last Meta generation 02 Nov 2026 11:09 EAT (muse-wonder), LiteLLM logs
+CLASSIFICATION Issued copy - verifiable
