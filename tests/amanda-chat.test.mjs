@@ -99,3 +99,73 @@ test("the worker runs before the asset handler for the Amanda route", async () =
   const cfg = readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8");
   assert.match(cfg, /"\/api\/amanda\/\*"/, "run_worker_first must cover /api/amanda/* or the route 405s");
 });
+
+// ---------------------------------------------------------------------------- voice and pictures
+
+const ENV = { META_API_KEY: "test-key" };
+
+function stubFetch(handlers) {
+  const real = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url, init) => {
+    calls.push({ url: String(url), init });
+    for (const [match, reply] of handlers) {
+      if (String(url).includes(match)) return reply();
+    }
+    throw new Error(`unexpected fetch to ${url}`);
+  };
+  return { calls, restore: () => { globalThis.fetch = real; } };
+}
+
+const json = (body) => () =>
+  new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
+
+test("a voice note is transcribed before the model is asked, and the transcript comes back", async () => {
+  const stub = stubFetch([
+    ["/asr/transcribe", json({ transcript: "How long does Mombasa to Kigali take?" })],
+    ["/chat/completions", json({ choices: [{ message: { content: "Kigali is 1,194 km from Nairobi, about 31 hours by road." } }] })],
+  ]);
+  try {
+    const res = await chat(
+      ask("", { messages: [], audio: `data:audio/wav;base64,${Buffer.from("RIFF0000WAVE").toString("base64")}` }),
+      ENV,
+    );
+    const out = await res.json();
+    assert.equal(res.status, 200);
+    assert.equal(out.transcript, "How long does Mombasa to Kigali take?");
+    assert.equal(out.heard, "voice");
+    assert.match(out.reply, /Kigali/);
+    assert.ok(stub.calls[0].url.includes("/asr/transcribe"), "speech is asked before the chat model");
+    assert.ok(stub.calls[1].url.includes("/chat/completions"));
+    const sent = JSON.parse(stub.calls[1].init.body);
+    assert.ok(sent.messages.some((m) => m.content.includes("Kigali")), "the transcript became the question");
+  } finally {
+    stub.restore();
+  }
+});
+
+test("a photograph reaches the model as an image part", async () => {
+  const stub = stubFetch([
+    ["/chat/completions", json({ choices: [{ message: { content: "That is a forty-foot container, loaded." } }] })],
+  ]);
+  try {
+    const png = `data:image/png;base64,${Buffer.from("89504e470d0a1a0a").toString("base64")}`;
+    const res = await chat(ask("What is this?", { messages: [{ role: "user", content: "What is this?" }], image: png }), ENV);
+    const out = await res.json();
+    assert.equal(res.status, 200);
+    assert.equal(out.heard, "photo");
+    const sent = JSON.parse(stub.calls[0].init.body);
+    const user = sent.messages.filter((m) => m.role === "user").pop();
+    assert.ok(Array.isArray(user.content), "the user turn carries parts, not a bare string");
+    assert.ok(user.content.some((p) => p.type === "image_url"), "the picture is attached");
+  } finally {
+    stub.restore();
+  }
+});
+
+test("something that is not audio is refused with a straight answer, not a guess", async () => {
+  const res = await chat(ask("", { messages: [], audio: "not-a-recording" }), ENV);
+  const out = await res.json();
+  assert.equal(res.status, 422);
+  assert.match(out.error, /audio/i);
+});

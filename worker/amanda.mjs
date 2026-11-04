@@ -146,6 +146,35 @@ export function buildFacts(text, weightKg) {
   return lines;
 }
 
+
+/** Meta's speech endpoint: 16 kHz mono WAV in, transcript out. */
+async function transcribe(env, dataUrl) {
+  const m = /^data:audio\/[a-z0-9.+-]+;base64,(.+)$/i.exec(String(dataUrl ?? ""));
+  if (!m) throw new Error("audio must be a base64 data URL");
+  if (!env.META_API_KEY) throw new Error("no model key");
+  const bytes = Uint8Array.from(atob(m[1]), (c) => c.charCodeAt(0));
+  if (bytes.length > 6 * 1024 * 1024) throw new Error("recording too long");
+  const form = new FormData();
+  form.append("request", JSON.stringify({ model: "muse-voice-transcribe-1.0", audioEncoding: "WAV", mode: "ENDPOINTING" }));
+  form.append("audio", new Blob([bytes], { type: "audio/wav" }), "note.wav");
+  const res = await fetch("https://api.meta.ai/v1/asr/transcribe", {
+    method: "POST",
+    headers: { authorization: `Bearer ${env.META_API_KEY}` },
+    body: form,
+  });
+  if (!res.ok) throw new Error(`transcription ${res.status}`);
+  const out = await res.json();
+  return clean(out?.transcript ?? "");
+}
+
+/** A data URL the chat model may look at, or null when it is not an image. */
+function imagePart(dataUrl) {
+  const s = String(dataUrl ?? "");
+  if (!/^data:image\/(png|jpe?g|webp);base64,/i.test(s)) return null;
+  if (s.length > 5 * 1024 * 1024) return null;
+  return { type: "image_url", image_url: { url: s } };
+}
+
 async function askModel(env, messages) {
   const key = env.META_API_KEY;
   if (!key) throw new Error("no model key");
@@ -177,20 +206,47 @@ export async function chat(request, env) {
   let body;
   try { body = await request.json(); } catch { return json({ error: "JSON body required" }, 400); }
 
+  let transcript = null;
+  let heard = null;
+  if (body?.audio) {
+    try {
+      transcript = await transcribe(env, body.audio);
+      heard = "voice";
+    } catch (err) {
+      return json({ error: `could not hear the recording: ${String(err.message ?? err)}` }, 422);
+    }
+    if (!transcript) return json({ error: "the recording had no speech in it" }, 422);
+  }
+
   const history = Array.isArray(body?.messages) ? body.messages : [];
   const turns = history
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
     .slice(-8)
     .map((m) => ({ role: m.role, content: clean(m.content).slice(0, 1500) }));
+  if (transcript) turns.push({ role: "user", content: transcript });
+
   const lastUser = [...turns].reverse().find((m) => m.role === "user");
   if (!lastUser) return json({ error: "a question is required" }, 400);
 
-  const weightKg = weightKgIn(lastUser.content);
-  const facts = buildFacts(turns.map((m) => m.content).join(" \n "), weightKg);
+  const shot = imagePart(body?.image);
+  if (shot) {
+    lastUser.content = lastUser.content
+      ? [{ type: "text", text: lastUser.content }, shot]
+      : [shot, { type: "text", text: "What do you make of this, and what does it mean for the shipment?" }];
+    heard = heard ? `${heard}+photo` : "photo";
+  }
+
+  const textOf = (m) => (typeof m.content === "string"
+    ? m.content
+    : (Array.isArray(m.content) ? m.content.filter((p) => p.type === "text").map((p) => p.text).join(" ") : ""));
+  const asked = textOf(lastUser);
+  const weightKg = weightKgIn(asked);
+  const facts = buildFacts(turns.filter((m) => m.role === "user").map(textOf).join(" \n "), weightKg);
   const context = clean(body?.context?.page ?? "").slice(0, 80);
 
   const messages = [
     { role: "system", content: SYSTEM },
+    ...(heard ? [{ role: "system", content: `The client sent this as ${heard === "voice" ? "a spoken voice note, transcribed word for word" : heard === "photo" ? "a photograph" : "a voice note with a photograph attached"}. Answer what they actually asked; if the picture shows cargo, a document or a truck, say what you can see and what it changes. Keep it short.` }] : []),
     { role: "system", content: `FACTS (the only numbers you may use):\n- ${facts.join("\n- ")}${context ? `\n- the client is on the ${context} screen of the desk` : ""}` },
     ...turns,
   ];
@@ -198,13 +254,14 @@ export async function chat(request, env) {
   const started = Date.now();
   try {
     const { text, model } = await askModel(env, messages);
-    return json({ reply: text, facts, model, ms: Date.now() - started });
+    return json({ reply: text, facts, model, transcript, heard, ms: Date.now() - started });
   } catch (err) {
     // A desk that cannot reach the model still answers: the figures are computed here, not invented.
     const fallback = facts.join("\n");
     return json({
       reply: `The desk's assistant is briefly offline, so here is what is already computed:\n${fallback}\nThe desk will confirm the rest: +254 718 554 383.`,
       facts,
+      transcript,
       degraded: true,
       reason: String(err.message ?? err),
       ms: Date.now() - started,
