@@ -1,0 +1,16 @@
+{
+  "manifest": {
+    "COC": "Certificate of Conformity - PVoC standards",
+    "BL": "Bill of Lading - Title of goods",
+    "PL": "Packing List - Weight/CBM per box",
+    "COO": "Certificate of Origin - EAC/COMESA preferential",
+    "IL": "Import Licence - Ministry of Trade",
+    "EL": "Export Licence",
+    "CI": "Commercial Invoice - Value for Duty",
+    "TI": "Transport Invoice",
+    "PI": "Proforma Invoice - Quote phase",
+    "SHIP": "Shipping Instructions/Manifest"
+  },
+  "branding": "Altovex Global Logistics Header/Footer",
+  "standard": "ISO 20022 / UNCTAD"
+}

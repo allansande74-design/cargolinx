@@ -29,3 +29,12 @@ Altovex CargoLinx is engineered as a high-performance, offline-first freight des
 
 ## 5. Integrated Ledger
 The system operates on a single source of truth. Whether a user is in the 'Sourcing' module or the 'Finance' module, they are interacting with the same shipment ledger, ensuring data consistency across the entire trade lifecycle.
+
+## Visibility Strategy: Hybrid Independence
+To ensure total reliability, CargoLinx utilizes a hybrid approach to visibility:
+- **Immediate:** Loconav API for rapid deployment.
+- **Strategic:** Proprietary tracking via dedicated project phones (WebSocket streaming) or on-board IoT gadgets to ensure 100% data ownership.
+To ensure end-to-end reliability, CargoLinx integrates with third-party specialists:
+- **Visibility:** Loconav (Fleet management, Real-time GPS, and Video Telematics).
+- **Security:** Licensed Goods-in-Transit Insurance providers.
+- **Finance:** Partner Banks for Escrow and Trade Finance settlement.

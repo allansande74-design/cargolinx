@@ -15,7 +15,7 @@ echo "tree ok: $(find "$SRC" -type f | wc -l) files, $(du -sk "$SRC" | cut -f1) 
 echo "film: $(du -h "$SRC/demo/cargolinx-demo-entry-153s.mp4" | cut -f1)"
 if [[ $DRY -eq 1 ]]; then echo "dry run only - nothing pushed"; exit 0; fi
 TMP=$(mktemp -d)
-git clone -q --branch gh-pages github "$TMP/pages"
+git clone -q --branch gh-pages git@github.com:allansande74-design/cargolinx.git "$TMP/pages"
 cp -a "$SRC"/. "$TMP/pages"/
 cd "$TMP/pages"
 git add -A

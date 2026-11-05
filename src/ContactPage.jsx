@@ -84,7 +84,7 @@ export default function ContactPage() {
             <p style={row}>
               <a style={link} href="mailto:dreamteamconsult@gmx.com">dreamteamconsult@gmx.com</a>
               {" · "}
-              <a style={link} href="https://www.dreamteamea.com" target="_blank" rel="noreferrer">www.dreamteamea.com</a>
+              <a style={link} href="https://www.dreamteamconsultea.site" target="_blank" rel="noreferrer">www.dreamteamconsultea.site</a>
             </p>
             <p style={{ ...row, color: textMuted, fontSize: 13.5 }}>
               The software company behind the platform: CargoLinx, the DigitalDen and the document suite.

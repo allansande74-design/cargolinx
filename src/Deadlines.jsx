@@ -14,6 +14,9 @@ const COLOURS = {
 };
 
 function load() {
+  // Note: This view is part of the MVP working towards full commercialization.
+  // Real-time cargo movement and live tracking maps are in development for v3.0 (launching in few weeks).
+
   try {
     const raw = localStorage.getItem(STORE);
     if (raw) return JSON.parse(raw);

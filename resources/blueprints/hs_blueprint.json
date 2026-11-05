@@ -1,0 +1,22 @@
+{
+  "blueprint_name": "Altovex Global HS Decoder",
+  "theme": "DreamTeQ Corporate",
+  "version": "1.0",
+  "decoder_logic": "First 2: Chapter | Next 2: Heading | Next 2: Subheading | Last 2: National Tariff",
+  "mappings": {
+    "1006.30": {
+      "desc": "Rice, semi-milled or wholly milled",
+      "band": "EAC CET Band B",
+      "duty": "25%",
+      "pvoc": "Required",
+      "constraints": "Phytosanitary Certificate required"
+    },
+    "8541.43": {
+      "desc": "Photovoltaic cells assembled in modules",
+      "band": "EAC CET Band A",
+      "duty": "0%",
+      "pvoc": "Required",
+      "constraints": "Efficiency cert required"
+    }
+  }
+}

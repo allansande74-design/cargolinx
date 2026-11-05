@@ -43,7 +43,7 @@ export default function Contacts() {
               <a style={link} href="mailto:dreamteamconsult@gmx.com">dreamteamconsult@gmx.com</a>
             </p>
             <p style={row}>
-              <a style={link} href="https://www.dreamteamea.com" target="_blank" rel="noreferrer">www.dreamteamea.com</a>
+              <a style={link} href="https://www.dreamteamconsultea.site" target="_blank" rel="noreferrer">www.dreamteamconsultea.site</a>
             </p>
           </div>
 

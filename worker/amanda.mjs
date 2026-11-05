@@ -21,7 +21,15 @@ const LIMIT = { windowMs: 10 * 60 * 1000, max: 20 };
 const hits = new Map();
 
 /** Cost-plus on the tarmac: the rate card basis the desk quotes from, before any concession. */
-const RATE = { perKmUsd: 1.85, perBorderUsd: 250, grossUp: 0.82 };
+const RATE = { 
+  perKmUsd: 1.85, 
+  perBorderUsd: 250, 
+  grossUp: 0.82, 
+  perKgLcl: 0.12, 
+  perCbm: 45,
+  truck12T: 0.8, // multiplier for 12T truck vs full trailer
+  truck27T: 1.0  // baseline for 27T trailer
+};
 
 const CITIES = [
   "Mombasa", "Nairobi", "Kampala", "Kigali", "Arusha", "Dar es Salaam", "Dodoma", "Mwanza",
@@ -40,6 +48,22 @@ How you answer:
 - You never confirm a booking, a sailing or a price in writing. Say the desk will confirm.
 - Where the question is outside freight and trade, say so in one line and offer what you can do.
 - Keep it under 120 words unless the client asks for detail. No bullet lists longer than five lines.
+SECURITY PROTOCOL:
+- TRANSACTIONAL DOCS (CoC, BL, PL, COO, CI, etc.): NEVER share directly. Escalate to Human Admin for express approval and signature. State: 'Your document is being signed by the admin and will be sent shortly.'
+- MARKETING CONTENT (Brochures, Catalogs, Profiles, Vouchers, Social Links): Share freely and instantly.
+- Always check the document type before initiating a file transfer.
+When discussing packaging or quotes:
+- Encourage cargo owners to pack goods in a box shape (rectangular) to ensure CBM (Cubic Meter) is calculated accurately.
+- Specify that weights must be in KGs or MT (Metric Tonnes).
+- Explain that box-shaped packing enables the desk to prepare high-fidelity, organized loading plans for the truck.
+- If the load is small, suggest LCL consolidation (per kg or per CBM).
+- Mention that a 12T truck is for medium loads and a 27T trailer for full loads.
+When pricing:
+- For < 1,000 kg: Suggest LCL consolidation (per kg or per CBM).
+- For 1,000 kg to 12,000 kg: Quote the 12T truck rate.
+- For 12,000 kg to 27,000 kg: Quote the 27T trailer rate.
+- Always explain if the load is small enough for a consolidator.
+- Mention CBM for imports/exports where volume matters.
 - Write complete, grammatical sentences in the voice of a Kenyan freight clerk: "Nairobi to Kampala is 700 km, one border." Never begin a sentence with "For" unless it reads naturally.
 - When a client asks to be contacted, wants a quotation issued, or describes a shipment, take the details you need — name, company, email or phone, cargo, route, weight — then say the desk will confirm in writing the same working day. Never claim you have opened an account, created a booking, or sent an invoice; you cannot do those, and saying so would be a lie the desk then has to undo.
 - Escalate to the desk when the client asks for a firm quote, a contract, credit terms, or a complaint; say that complex matters will be escalated to the admin for follow-up.
@@ -179,10 +203,20 @@ export function laneFact(text) {
 
 /** Cost-plus freight for a lane, at the desk's rate-card basis. */
 export function freightPrice(lane, weightKg = null) {
-  const base = lane.km * RATE.perKmUsd + lane.borders * RATE.perBorderUsd;
-  const price = Math.round(base / RATE.grossUp / 10) * 10;
-  const perTonne = weightKg ? Math.round((price / (weightKg / 1000)) * 100) / 100 : null;
-  return { priceUsd: price, perTonneUsd: perTonne };
+  const baseFull = lane.km * RATE.perKmUsd + lane.borders * RATE.perBorderUsd;
+  const fullTrailerPrice = Math.round((baseFull / RATE.grossUp / 10) * 10);
+  const price27T = fullTrailerPrice;
+  const price12T = Math.round((fullTrailerPrice * RATE.truck12T / 10) * 10);
+  const perTonneRate = (fullTrailerPrice / 27); 
+  const lclPricePerKg = RATE.perKgLcl + (lane.km * 0.0005); 
+  return {
+    fullTrailer: price27T,
+    mediumTruck: price12T,
+    perTonne: Math.round(perTonneRate * 100) / 100,
+    perKg: Math.round(lclPricePerKg * 100) / 100,
+    perCbm: RATE.perCbm,
+    weightKg: weightKg
+  };
 }
 
 const DOCS = {
@@ -204,8 +238,8 @@ export function buildFacts(text, weightKg) {
   if (lane) {
     const p = freightPrice(lane, weightKg);
     lines.push(`lane ${lane.from} to ${lane.to}: ${lane.km} km, ${lane.transitHours} h driving, ${lane.borders} border crossing(s)`);
-    lines.push(`indicative freight for that lane: USD ${p.priceUsd} per truck, one vehicle, excluding duty, clearing and last mile`);
-    if (weightKg && p.perTonneUsd) lines.push(`weight given by the client: ${weightKg} kg, which is USD ${p.perTonneUsd} per tonne on that rate`);
+    lines.push(`indicative freight for that lane: USD ${p.fullTrailer} per 27T trailer, USD ${p.mediumTruck} per 12T truck, excluding duty, clearing and last mile`);
+    if (weightKg && p.perTonne) lines.push(`weight given by the client: ${weightKg} kg, which is USD ${p.perTonne} per tonne on that rate`);
     lines.push("this is the road leg only; clearing, duty and warehousing are quoted separately");
   } else if (citiesIn(text).length === 1) {
     lines.push(`the client names one place (${citiesIn(text)[0]}); the other end of the journey is not stated`);
