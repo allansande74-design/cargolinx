@@ -112,12 +112,16 @@ function Desk({ onSignOut }) {
   }, []);
 
   useEffect(() => {
+    const cur = window.location.hash || "";
+    if (!cur.startsWith("#/desk")) return;
     const h = "#/desk/" + tab;
-    if (window.location.hash !== h) window.location.hash = h;
+    if (cur !== h) window.location.hash = h;
   }, [tab]);
 
   useEffect(() => {
     const onHash = () => {
+      const cur = window.location.hash || "";
+      if (!cur.startsWith("#/desk")) return;
       const next = tabFromHash();
       setTab((prev) => (prev === next ? prev : next));
     };
