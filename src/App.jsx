@@ -1058,6 +1058,8 @@ function TrackView({ shipment, shipments, onPick, onChange }) {
 
       <section className="card">
         <h2>Why this ETA</h2>
+        {plan?.basis ? (
+        <>
         <table className="lines">
           <thead><tr><th>Leg</th><th className="num">km</th><th className="num">Speed</th><th className="num">Drive h</th><th>Source</th></tr></thead>
           <tbody>
@@ -1073,9 +1075,13 @@ function TrackView({ shipment, shipments, onPick, onChange }) {
           </tbody>
         </table>
         <p className="hint" style={{ marginTop: 8 }}>
-          Drive {plan?.basis?.driveHours} h · dwell {plan?.basis?.dwellHours} h · customs {plan?.basis?.customsHours} h · buffer {(plan?.basis?.bufferPct * 100).toFixed(0)}%
-          ({plan?.basis?.bufferHours} h). Every figure above is an assumption you can challenge — that is the point of printing it.
+          Drive {plan?.basis?.driveHours ?? "—"} h · dwell {plan?.basis?.dwellHours ?? "—"} h · customs {plan?.basis?.customsHours ?? "—"} h · buffer {plan?.basis?.bufferPct != null ? `${Math.round(plan.basis.bufferPct * 100)}%` : "—"}
+          ({plan?.basis?.bufferHours ?? "—"} h). Every figure above is an assumption you can challenge — that is the point of printing it.
         </p>
+        </>
+        ) : (
+        <p className="hint">No ETA plan on this file yet — open the shipment under New shipment and set its lane so the desk can compute the basis.</p>
+        )}
       </section>
 
       <section className="card">

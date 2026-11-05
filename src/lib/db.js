@@ -96,10 +96,32 @@ export async function getPhoto(id) {
  * no address and no price.
  */
 export const DEMO_JOBS = [
-  { id: "clx_demo_1", ref: "CLX-DEMO-0001", origin: "Mombasa", destination: "Kampala", cargo: "Solar panels, boxed", qty: 12, weightKg: 900, status: "quoted", value: { goods: 18500, freight: 2900 }, services: { clearing: 0, transport: 0, lastMile: 0 }, dutyRate: 0 },
-  { id: "clx_demo_2", ref: "CLX-DEMO-0002", origin: "Mombasa", destination: "Nairobi", cargo: "Ceramic tiles, palletised", qty: 40, weightKg: 4500, status: "in transit", value: { goods: 9400, freight: 1100 }, services: { clearing: 0, transport: 0, lastMile: 0 }, dutyRate: 0.25 },
-  { id: "clx_demo_3", ref: "CLX-DEMO-0003", origin: "Nairobi", destination: "Kigali", cargo: "Packaged foods, cartons", qty: 160, weightKg: 1200, status: "quoted", value: { goods: 7600, freight: 1450 }, services: { clearing: 0, transport: 0, lastMile: 0 }, dutyRate: 0.1 },
+  { id: "clx_demo_1", ref: "CLX-DEMO-0001", origin: "Mombasa", destination: "Kampala", lane: "Mombasa - Kampala", cargo: "Solar panels, boxed", qty: 12, weightKg: 900, status: "quoted", value: { goods: 18500, freight: 2900 }, services: { clearing: 0, transport: 0, lastMile: 0 }, dutyRate: 0 },
+  { id: "clx_demo_2", ref: "CLX-DEMO-0002", origin: "Mombasa", destination: "Nairobi", lane: "Mombasa - Nairobi", cargo: "Ceramic tiles, palletised", qty: 40, weightKg: 4500, status: "in transit", value: { goods: 9400, freight: 1100 }, services: { clearing: 0, transport: 0, lastMile: 0 }, dutyRate: 0.25 },
+  { id: "clx_demo_3", ref: "CLX-DEMO-0003", origin: "Nairobi", destination: "Kigali", lane: "Nairobi - Kigali", cargo: "Packaged foods, cartons", qty: 160, weightKg: 1200, status: "quoted", value: { goods: 7600, freight: 1450 }, services: { clearing: 0, transport: 0, lastMile: 0 }, dutyRate: 0.1 },
 ];
+
+/**
+ * ETA plans for the demo jobs, built from the same lane table and ETA engine
+ * the desk uses — never hand-typed numbers. A job without an etaPlan renders
+ * NaN on the tracking screen; this guarantees every demo job carries one.
+ */
+async function demoEtaPlans(now) {
+  try {
+    const { LANES } = await import("../../engine/lanes.mjs");
+    const { planEta } = await import("../../engine/eta.mjs");
+    const stamp = (now ?? new Date()).toISOString();
+    const plans = {};
+    for (const job of DEMO_JOBS) {
+      const legs = LANES[job.lane];
+      if (!legs) continue;
+      plans[job.id] = planEta({ segments: legs, departAt: stamp, customsHours: legs.some((l) => l.border) ? 12 : 2, bufferPct: 0.08 });
+    }
+    return plans;
+  } catch {
+    return {};
+  }
+}
 
 /** Write the demonstration jobs once, and never overwrite anything already on the desk. */
 export async function seedDemoJobs(now = new Date()) {
@@ -108,17 +130,27 @@ export async function seedDemoJobs(now = new Date()) {
     // A sample written by an older build can lack the fields the quote screen reads. Repair those
     // records in place - never a real job, only the ones this function writes.
     let repaired = 0;
+    const plans = await demoEtaPlans();
     for (const row of existing) {
       if (!row?.demo) continue;
       const want = DEMO_JOBS.find((j) => j.id === row.id);
       if (!want) continue;
-      if (row.services && typeof row.dutyRate === "number" && row.value) continue;
-      await put(STORES.shipments, { ...row, value: want.value, services: want.services, dutyRate: want.dutyRate });
+      const patch = {};
+      if (!(row.services && typeof row.dutyRate === "number" && row.value)) {
+        patch.value = want.value;
+        patch.services = want.services;
+        patch.dutyRate = want.dutyRate;
+      }
+      if (!row.lane && want.lane) patch.lane = want.lane;
+      if (!row.etaPlan && plans[row.id]) patch.etaPlan = plans[row.id];
+      if (Object.keys(patch).length === 0) continue;
+      await put(STORES.shipments, { ...row, ...patch });
       repaired += 1;
     }
     return { seeded: 0, repaired, reason: "desk already has jobs" };
   }
   const stamp = now.toISOString();
+  const plans = await demoEtaPlans(now);
   let seeded = 0;
   for (const job of DEMO_JOBS) {
     const record = {
@@ -127,6 +159,7 @@ export async function seedDemoJobs(now = new Date()) {
       note: "Demonstration job — sample data, not a client shipment.",
       createdAt: stamp,
       updatedAt: stamp,
+      ...(plans[job.id] ? { etaPlan: plans[job.id] } : {}),
     };
     await put(STORES.shipments, record);
     seeded += 1;
