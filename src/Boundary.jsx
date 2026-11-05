@@ -6,11 +6,18 @@ import { reportError } from "./lib/report.js";
 export default class Boundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { failed: false };
+    this.state = { failed: false, key: props.resetKey || null };
   }
 
   static getDerivedStateFromError() {
     return { failed: true };
+  }
+
+  static getDerivedStateFromProps(props, state) {
+    if (props.resetKey !== undefined && props.resetKey !== state.key) {
+      return { failed: false, key: props.resetKey };
+    }
+    return null;
   }
 
   componentDidCatch(error, info) {

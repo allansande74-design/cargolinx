@@ -9,8 +9,20 @@ import "./shell.css";
 
 watchForFailures("desk");
 
-createRoot(document.getElementById("root")).render(
-  <Boundary>
-    <App />
-  </Boundary>,
-);
+// A crash screen that survives a route change is a trap: the old failure masks the
+// new page. Key the Boundary on the address so moving to any route auto-resets it.
+function Root() {
+  const [routeKey, setRouteKey] = React.useState(window.location.hash || "#/");
+  React.useEffect(() => {
+    const onHash = () => setRouteKey(window.location.hash || "#/");
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+  return (
+    <Boundary resetKey={routeKey}>
+      <App key={routeKey} />
+    </Boundary>
+  );
+}
+
+createRoot(document.getElementById("root")).render(<Root />);
