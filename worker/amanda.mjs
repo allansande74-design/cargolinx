@@ -204,17 +204,21 @@ export function laneFact(text) {
 /** Cost-plus freight for a lane, at the desk's rate-card basis. */
 export function freightPrice(lane, weightKg = null) {
   const baseFull = lane.km * RATE.perKmUsd + lane.borders * RATE.perBorderUsd;
-  const fullTrailerPrice = Math.round((baseFull / RATE.grossUp / 10) * 10);
+  const fullTrailerPrice = Math.round(baseFull / RATE.grossUp / 10) * 10;
   const price27T = fullTrailerPrice;
-  const price12T = Math.round((fullTrailerPrice * RATE.truck12T / 10) * 10);
+  const price12T = Math.round(fullTrailerPrice * RATE.truck12T / 10) * 10;
   const perTonneRate = (fullTrailerPrice / 27); 
   const lclPricePerKg = RATE.perKgLcl + (lane.km * 0.0005); 
+  const tonnes = weightKg ? weightKg / 1000 : 27;
+  const perTonneForLoad = fullTrailerPrice / (tonnes > 0 ? tonnes : 27);
   return {
     fullTrailer: price27T,
     mediumTruck: price12T,
     perTonne: Math.round(perTonneRate * 100) / 100,
     perKg: Math.round(lclPricePerKg * 100) / 100,
     perCbm: RATE.perCbm,
+    priceUsd: price27T,
+    perTonneUsd: Math.round(perTonneForLoad * 100) / 100,
     weightKg: weightKg
   };
 }
