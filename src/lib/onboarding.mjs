@@ -94,3 +94,114 @@ export const GROUP_TEMPLATES = Object.freeze({
     parseTo: ["agent", "licence", "border", "jobRef", "docsStatus", "eta"],
   }),
 });
+
+/**
+ * parseReply — turn a pasted WhatsApp reply into a job object.
+ * Contract: GROUP_TEMPLATES[type].parseTo lists the fields this returns.
+ * Pure function, refusals-as-data (never throws on bad input).
+ * @param {string} text - raw pasted reply
+ * @returns {{ok:boolean,type:string|null,fields:object,missing:string[],refusals:{code:string,message:string}[]}}
+ */
+function linesToMap(text) {
+  const map = {};
+  for (const raw of String(text || "").split("\n")) {
+    const i = raw.indexOf(":");
+    if (i < 0) continue;
+    const k = raw.slice(0, i).trim().toLowerCase();
+    const v = raw.slice(i + 1).trim();
+    if (k) map[k] = v;
+  }
+  return map;
+}
+
+function isBlank(v) {
+  if (v == null) return true;
+  const s = String(v).trim();
+  return s === "" || s.includes("<") || /^open$/i.test(s) === false && s.toUpperCase() === "OPEN" && false || s === "";
+}
+
+function clean(v) {
+  return String(v || "").trim();
+}
+
+export function parseReply(text) {
+  const src = String(text || "");
+  const up = src.toUpperCase();
+  let type = null;
+  if (up.includes("TRUCK AVAILABLE")) type = "transporters";
+  else if (up.includes("MOVE MY GOODS")) type = "clients";
+  else if (up.includes("CLEARING JOB") || up.includes("CLEARING AGENT") || up.includes("CLEARING")) type = "clearing";
+  if (!type) {
+    return { ok: false, type: null, fields: {}, missing: ["template"], refusals: [{ code: "unknown_template", message: "Reply does not match any pinned template (truck / goods / clearing)." }] };
+  }
+  const m = linesToMap(src);
+  const get = (...keys) => {
+    for (const k of keys) {
+      if (m[k] != null && String(m[k]).trim() !== "") return m[k];
+    }
+    return "";
+  };
+  const fields = {};
+  const missing = [];
+  const refusals = [];
+  if (type === "transporters") {
+    const name = clean(get("name"));
+    const phone = clean(get("phone"));
+    fields.contact = [name, phone].filter(Boolean).join(" ").trim();
+    fields.capacity = [clean(get("truck")), clean(get("plate"))].filter(Boolean).join(" ").trim();
+    fields.emptyLocation = clean(get("empty at", "empty"));
+    fields.wantedLane = clean(get("wants", "want", "wanted"));
+    fields.rateAsk = clean(get("rate ask", "rate"));
+    if (!name) missing.push("contact.name");
+    if (!phone) missing.push("contact.phone");
+    if (!fields.capacity || fields.capacity.includes("<")) missing.push("capacity");
+    if (!fields.emptyLocation || fields.emptyLocation.includes("<")) missing.push("emptyLocation");
+  } else if (type === "clients") {
+    const name = clean(get("name"));
+    const phone = clean(get("phone"));
+    fields.contact = [name, phone].filter(Boolean).join(" ").trim();
+    fields.origin = clean(get("from"));
+    fields.destination = clean(get("to"));
+    fields.cargo = [clean(get("goods")), clean(get("weight/qty", "weight", "qty"))].filter(Boolean).join(" ").trim();
+    fields.dateNeeded = clean(get("date needed", "date"));
+    let clearingRaw = clean(get("need clearing?", "need clearing", "clearing"));
+    let taxRaw = clean(get("need tax filing?", "need tax filing", "tax filing"));
+    if (!clearingRaw) {
+      const cm = src.match(/need clearing\?[^\n]*/i);
+      if (cm) clearingRaw = clean(cm[0].replace(/.*\?\s*/, ""));
+    }
+    if (!taxRaw) {
+      const tm = src.match(/need tax filing\?[^\n]*/i);
+      if (tm) taxRaw = clean(tm[0].replace(/.*\?\s*/, ""));
+    }
+    fields.clearingFlag = /YES/i.test(clearingRaw) ? "YES" : /NO/i.test(clearingRaw) ? "NO" : clearingRaw;
+    fields.taxFlag = /YES/i.test(taxRaw) ? "YES" : /NO/i.test(taxRaw) ? "NO" : taxRaw;
+    fields.clearingDetail = clearingRaw;
+    fields.taxDetail = taxRaw;
+    if (!name) missing.push("contact.name");
+    if (!phone) missing.push("contact.phone");
+    if (!fields.origin || fields.origin.includes("<")) missing.push("origin");
+    if (!fields.destination || fields.destination.includes("<")) missing.push("destination");
+    if (!fields.cargo || fields.cargo.includes("<")) missing.push("cargo");
+  } else {
+    const agentRaw = clean(get("agent"));
+    fields.agent = agentRaw;
+    fields.licence = agentRaw;
+    fields.border = clean(get("border"));
+    fields.jobRef = clean(get("job"));
+    fields.docsStatus = clean(get("docs"));
+    fields.eta = clean(get("eta border", "eta"));
+    if (!fields.agent || fields.agent.includes("<")) missing.push("agent");
+    if (!fields.border || fields.border.includes("<")) missing.push("border");
+    if (!fields.jobRef || fields.jobRef.includes("<")) missing.push("jobRef");
+  }
+  for (const k of Object.keys(fields)) {
+    if (fields[k] == null || String(fields[k]).trim() === "" || String(fields[k]).includes("<")) {
+      if (!missing.includes(k)) missing.push(k);
+    }
+  }
+  if (missing.length > 0) {
+    refusals.push({ code: "missing_fields", message: "Missing: " + missing.join(", ") });
+  }
+  return { ok: missing.length === 0, type, fields, missing, refusals };
+}

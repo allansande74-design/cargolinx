@@ -3,6 +3,7 @@ import { createAccount, createUser } from "../../engine/accounts.mjs";
 import { createOrder, advance } from "../../engine/orders.mjs";
 import { buildInvoice, recordPayment } from "../../engine/invoicing.mjs";
 import { registerTruck, verifyTruckPapers, approveTruck } from "./truck-matching.mjs";
+import { recordAdvance } from "./advance.mjs";
 
 const DAY = 86400000;
 const at = (now, days) => new Date(new Date(now).getTime() + days * DAY).toISOString();
@@ -68,7 +69,13 @@ export async function ensureDemoBook(now = new Date()) {
   o3 = step(o3, { stage: "received", grnRef: "GRN-2298", receivedQty: 3, receiptVariance: 0, receiptStatus: "clean" });
   o3 = step(o3, { stage: "picked", pickedQty: 3 });
   o3 = step(o3, { stage: "packed", packedQty: 3 });
-  o3 = step(o3, { stage: "dispatched", vehicleId: "KDA 123A", driverName: "Peter Mwangi", driverPhone: "+254712000111", trackingRef: "CLX-8850" });
+  o3 = step(o3, { stage: "dispatched", vehicleId: "KDA 123A", driverName: "Peter Mwangi", driverPhone: "+254****0111", trackingRef: "CLX-8850" });
+  o3.tripAmountKes = 120000;
+  o3.carrier = { id: "Otieno Haulage", verified: true };
+  {
+    const r = recordAdvance({ ...o3, stage: "dispatched", vehicleId: "KDA 123A", trackingRef: "CLX-8850", tripAmountKes: 120000, carrier: { id: "Otieno Haulage", verified: true } }, 30000);
+    if (r.ok) o3.advance = r.advance;
+  }
 
   // Purchased, in the warehouse queue.
   let o4 = base(a3.id, [line("LED high bay, 150W", 120, 8900, "9405.41")], 8, { city: "Kampala", name: "Kampala Traders — Ntinda" });

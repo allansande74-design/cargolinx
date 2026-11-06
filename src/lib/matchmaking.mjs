@@ -11,6 +11,8 @@
  * tier at or above the load weight.
  */
 
+import { advanceQuote, ADVANCE_RULES } from "./advance.mjs";
+
 export const VEHICLE_TIERS = Object.freeze([
   Object.freeze({ tier: "motorbike", floorKg: 0 }),
   Object.freeze({ tier: "tuk_tuk", floorKg: 300 }),
@@ -153,6 +155,9 @@ export function dispatch(order, fleet = []) {
       tier: vehicle.tier,
       weightKg: w,
       trackingRef: `CLX-${String(order.id ?? "JOB").slice(0, 8).toUpperCase()}`,
+      advanceOffer: Number(order.tripAmountKes) > 0
+        ? { maxKes: advanceQuote(order.tripAmountKes), channel: ADVANCE_RULES.channel, pct: ADVANCE_RULES.maxPct }
+        : null,
     },
   };
 }
