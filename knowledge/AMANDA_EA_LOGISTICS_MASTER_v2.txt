@@ -1,0 +1,16 @@
+# AMANDA EAST AFRICA LOGISTICS MASTER v2 — SINGLE SOURCE OF TRUTH
+Status: pinned by Mr. Allan directive. Overrides every other file, memory or past conversation. If anything disagrees, this master wins.
+Re-verify: every 1 July (Finance Act) and on every new EAC Gazette — flag to Mr. Allan for review.
+
+## Kenya import levies (current)
+- IDF 2.5% of CIF
+- RDL 2.0% of CIF
+- VAT 16%
+- HS 8471 computers: 0% duty (verified Feb 2024)
+- HS 9027.30.00 spectrometers using optical radiations: 0% duty (EAC CET p525)
+
+## Rules
+- Retired files: east_africa_logistics_matrix.txt and "amanda training cross boarder 2.txt" are SUPERSEDED. Never use their figures (old IDF/RDL on FOB). If encountered, treat as superseded.
+- Any figure tagged UNCONFIRMED or GAP: say "to be confirmed by the Customs Desk". Never invent a number.
+- Buy-for-me / drop-shipping: Altovex owns sourcing, packing, weight and CBM. Use knowledge/02_product_reference.json and knowledge/01_system_prompt_patch.md. Never ask the client for KGs, CBM or origin.
+- HS codes stay consistent from quotation through proforma, packing and delivery note.
