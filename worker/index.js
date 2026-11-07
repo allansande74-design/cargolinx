@@ -405,9 +405,9 @@ function laneFact(text) {
 __name(laneFact, "laneFact");
 function freightPrice(lane, weightKg = null) {
   const baseFull = lane.km * RATE.perKmUsd + lane.borders * RATE.perBorderUsd;
-  const fullTrailerPrice = Math.round(baseFull / RATE.grossUp / 10 * 10);
+  const fullTrailerPrice = Math.round(baseFull / RATE.grossUp / 10) * 10;
   const price27T = fullTrailerPrice;
-  const price12T = Math.round(fullTrailerPrice * RATE.truck12T / 10 * 10);
+  const price12T = Math.round(fullTrailerPrice * RATE.truck12T / 10) * 10;
   const perTonneRate = fullTrailerPrice / 27;
   const lclPricePerKg = RATE.perKgLcl + lane.km * 5e-4;
   return {
