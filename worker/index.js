@@ -143,19 +143,19 @@ var LANES = Object.freeze({
     { name: "Mombasa - Nairobi", km: 485, speedKph: 50 },
     { name: "Nairobi - Eldoret", km: 320, speedKph: 55 },
     { name: "Eldoret - Malaba", km: 130, speedKph: 50, border: true },
-    { name: "Malaba - Kampala", km: 250, speedKph: 45 }
+    { name: "Malaba - Kampala", km: 225, speedKph: 45 }
   ],
   "Nairobi - Kampala": [
     { name: "Nairobi - Eldoret", km: 320, speedKph: 55 },
     { name: "Eldoret - Malaba", km: 130, speedKph: 50, border: true },
-    { name: "Malaba - Kampala", km: 250, speedKph: 45 }
+    { name: "Malaba - Kampala", km: 225, speedKph: 45 }
   ],
   "Mombasa - Nairobi": [{ name: "Mombasa - Nairobi", km: 485, speedKph: 50 }],
   "Nairobi - Kigali": [
     { name: "Nairobi - Eldoret", km: 320, speedKph: 55 },
     { name: "Eldoret - Malaba", km: 130, speedKph: 50, border: true },
-    { name: "Malaba - Kampala", km: 250, speedKph: 45 },
-    { name: "Kampala - Kigali", km: 510, speedKph: 50, border: true }
+    { name: "Malaba - Kampala", km: 225, speedKph: 45 },
+    { name: "Kampala - Kigali", km: 520, speedKph: 50, border: true }
   ]
 });
 function reverseName(name) {
@@ -273,7 +273,8 @@ When pricing:
 - For 12,000 kg to 27,000 kg: Quote the 27T trailer rate.
 - Always explain if the load is small enough for a consolidator.
 - Mention CBM for imports/exports where volume matters.
-- Write complete, grammatical sentences in the voice of a Kenyan freight clerk: "Nairobi to Kampala is 700 km, one border." Never begin a sentence with "For" unless it reads naturally.
+- Write complete, grammatical sentences in the voice of a Kenyan freight clerk: "Nairobi to Kampala is 675 km, one border." Never begin a sentence with "For" unless it reads naturally.
+- Ask at most two questions per message.
 - When a client asks to be contacted, wants a quotation, or describes a shipment, collect name, company, email or phone, cargo, route and quantity. Then say their request is logged under its quote reference and the Altovex desk will reply by email or WhatsApp within one working day. Never claim you have opened an account, created a booking, sent an email or sent an invoice; you cannot do those.
 - For a firm quote, a contract, credit terms or a complaint, say you have passed it to the desk under its reference, and that for anything urgent they can use the WhatsApp or Contact us button on this page.
 - When the client says they are waiting, give the reference, what the desk is doing next, and the time frame. Do not repeat the DDP definition or the same closing lines.

@@ -52,7 +52,7 @@ test("the export table carries the reversed route and the same kilometres", () =
   const rows = exportLaneRows(LANES);
   const kampala = rows.find((r) => r.name === "Kampala - Mombasa");
   assert.ok(kampala);
-  assert.equal(kampala.km, 1185);
+  assert.equal(kampala.km, 1160);
   assert.equal(kampala.borders, 1);
   assert.match(kampala.route, /^Kampala - Malaba · Malaba - Eldoret/);
 });
@@ -70,8 +70,8 @@ test("a carried load reads back the other way, with the distance it would really
   assert.equal(rev.asCarried, "Mombasa → Kampala");
   assert.equal(rev.reversed, "Kampala → Mombasa");
   assert.equal(rev.laneName, "Kampala - Mombasa");
-  assert.equal(rev.km, 1185);
-  assert.equal(rev.hours, 23.7);
+  assert.equal(rev.km, 1160);
+  assert.equal(rev.hours, 23.1);
   assert.equal(rev.cargo, "Solar panels");
   assert.equal(rev.goodsUsd, 18500);
   assert.equal(rev.reason, null);

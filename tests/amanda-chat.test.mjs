@@ -14,14 +14,14 @@ test("a lane named in a question is found, with its kilometres and borders", () 
   assert.ok(lane, "lane not found");
   assert.equal(lane.from, "Nairobi");
   assert.equal(lane.to, "Kampala");
-  assert.equal(lane.km, 700);
+  assert.equal(lane.km, 675);
   assert.equal(lane.borders, 1);
 });
 
 test("the reverse direction answers with the same kilometres", () => {
   const back = laneFact("what does Kampala to Nairobi cost");
   assert.ok(back);
-  assert.equal(back.km, 700);
+  assert.equal(back.km, 675);
 });
 
 test("one city alone is not a lane", () => {
@@ -51,12 +51,12 @@ test("a question with no freight content says so rather than inventing", () => {
 test("the endpoint answers with the model's words and the computed facts", async () => {
   const real = globalThis.fetch;
   globalThis.fetch = async () =>
-    new Response(JSON.stringify({ model: "muse-spark-1.3", choices: [{ message: { content: "  It is 700 km, one border.  " } }] }), { status: 200 });
+    new Response(JSON.stringify({ model: "muse-spark-1.3", choices: [{ message: { content: "  It is 675 km, one border.  " } }] }), { status: 200 });
   try {
     const res = await chat(ask("Nairobi to Kampala, 27 tonnes", {}), { META_API_KEY: "k" });
     assert.equal(res.status, 200);
     const body = await res.json();
-    assert.equal(body.reply, "It is 700 km, one border.");
+    assert.equal(body.reply, "It is 675 km, one border.");
     assert.equal(body.model, "muse-spark-1.3");
     assert.ok(Array.isArray(body.facts) && body.facts.length > 0);
   } finally {
@@ -186,5 +186,5 @@ test("the lane is answered in the direction the client asked", () => {
   const back = laneFact("Kampala to Nairobi, 27 tonnes");
   assert.equal(back.from, "Kampala");
   assert.equal(back.to, "Nairobi");
-  assert.equal(back.km, 700);
+  assert.equal(back.km, 675);
 });

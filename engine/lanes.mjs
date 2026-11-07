@@ -19,19 +19,19 @@ export const LANES = Object.freeze({
     { name: "Mombasa - Nairobi", km: 485, speedKph: 50 },
     { name: "Nairobi - Eldoret", km: 320, speedKph: 55 },
     { name: "Eldoret - Malaba", km: 130, speedKph: 50, border: true },
-    { name: "Malaba - Kampala", km: 250, speedKph: 45 },
+    { name: "Malaba - Kampala", km: 225, speedKph: 45 },
   ],
   "Nairobi - Kampala": [
     { name: "Nairobi - Eldoret", km: 320, speedKph: 55 },
     { name: "Eldoret - Malaba", km: 130, speedKph: 50, border: true },
-    { name: "Malaba - Kampala", km: 250, speedKph: 45 },
+    { name: "Malaba - Kampala", km: 225, speedKph: 45 },
   ],
   "Mombasa - Nairobi": [{ name: "Mombasa - Nairobi", km: 485, speedKph: 50 }],
   "Nairobi - Kigali": [
     { name: "Nairobi - Eldoret", km: 320, speedKph: 55 },
     { name: "Eldoret - Malaba", km: 130, speedKph: 50, border: true },
-    { name: "Malaba - Kampala", km: 250, speedKph: 45 },
-    { name: "Kampala - Kigali", km: 510, speedKph: 50, border: true },
+    { name: "Malaba - Kampala", km: 225, speedKph: 45 },
+    { name: "Kampala - Kigali", km: 520, speedKph: 50, border: true },
   ],
 });
 

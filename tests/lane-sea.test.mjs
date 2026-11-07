@@ -36,7 +36,7 @@ test("sea days are distance over speed, and exclude port time", () => {
 
 test("a corridor is the reversed road plus the sea, in their own units", () => {
   const c = corridorToChina("Kampala - Mombasa", "Shanghai");
-  assert.equal(c.inlandKm, 1185);
+  assert.equal(c.inlandKm, 1160);
   assert.equal(c.borders, 1);
   assert.equal(c.portName, "Shanghai");
   assert.ok(c.nm > c.greatCircleNm, "planning distance exceeds the great circle");
