@@ -473,19 +473,20 @@ function imagePart(dataUrl) {
   return { type: "image_url", image_url: { url: s } };
 }
 __name(imagePart, "imagePart");
-async function askOpenRouter2(env, messages) {
+const OR_CHAIN2 = ["anthropic/claude-sonnet-5.5", "moonshotai/kimi-k3", "google/gemini-3.8-flash"];
+async function askOpenRouter2(env, messages, model) {
   const key3 = env.OPENROUTER_API_KEY;
   if (!key3) throw new Error("no openrouter key");
   const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: { authorization: `Bearer ${key3}`, "content-type": "application/json", "HTTP-Referer": "https://altovexcargolinx.allansande74.workers.dev/", "X-Title": "CargoLinx desk" },
-    body: JSON.stringify({ model: "anthropic/claude-sonnet-5.5", messages, max_tokens: 700, temperature: 0.2 })
+    body: JSON.stringify({ model, messages, max_tokens: 700, temperature: 0.2 })
   });
   if (!res.ok) throw new Error(`openrouter ${res.status}`);
   const out = await res.json();
   const text = clean(out?.choices?.[0]?.message?.content ?? "");
   if (!text) throw new Error("empty answer");
-  return { text, model: out?.model ?? "anthropic/claude-sonnet-5.5" };
+  return { text, model: out?.model ?? model };
 }
 __name(askOpenRouter2, "askOpenRouter2");
 async function askModel(env, messages) {
@@ -561,10 +562,15 @@ async function chat(request, env) {
   const started = Date.now();
   let answered = null;
   let answerErr = null;
-  try {
-    answered = await askOpenRouter2(env, messages);
-  } catch (e0) {
-    answerErr = e0;
+  for (const orModel of OR_CHAIN2) {
+    try {
+      answered = await askOpenRouter2(env, messages, orModel);
+      break;
+    } catch (e0) {
+      answerErr = e0;
+    }
+  }
+  if (!answered) {
     try {
       answered = await askModel(env, messages);
       answerErr = null;

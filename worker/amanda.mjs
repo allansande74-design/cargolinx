@@ -16,7 +16,7 @@ import { POLICY_VALUES } from "../engine/policy-values.mjs";
 
 const UPSTREAM = "https://api.meta.ai/v1/chat/completions";
 const OR_UPSTREAM = "https://openrouter.ai/api/v1/chat/completions";
-const OR_MODEL = "anthropic/claude-sonnet-5.5";
+const OR_CHAIN = ["anthropic/claude-sonnet-5.5", "moonshotai/kimi-k3", "google/gemini-3.8-flash"];
 const OR_REFERER = "https://altovexcargolinx.allansande74.workers.dev/";
 const MODEL = "muse-spark-1.3";
 const MAX_TOKENS = 700;
@@ -292,7 +292,7 @@ function imagePart(dataUrl) {
   return { type: "image_url", image_url: { url: s } };
 }
 
-async function askOpenRouter(env, messages) {
+async function askOpenRouter(env, messages, model) {
   const key = env.OPENROUTER_API_KEY;
   if (!key) throw new Error("no openrouter key");
   const res = await fetch(OR_UPSTREAM, {
@@ -304,7 +304,7 @@ async function askOpenRouter(env, messages) {
       "X-Title": "CargoLinx desk",
     },
     body: JSON.stringify({
-      model: OR_MODEL,
+      model,
       messages,
       max_tokens: MAX_TOKENS,
       temperature: 0.2,
@@ -314,7 +314,7 @@ async function askOpenRouter(env, messages) {
   const out = await res.json();
   const text = clean(out?.choices?.[0]?.message?.content ?? "");
   if (!text) throw new Error("empty answer");
-  return { text, model: out?.model ?? OR_MODEL };
+  return { text, model: out?.model ?? model };
 }
 
 async function askModel(env, messages) {
@@ -396,10 +396,15 @@ export async function chat(request, env) {
   const started = Date.now();
   let answered = null;
   let answerErr = null;
-  try {
-    answered = await askOpenRouter(env, messages);
-  } catch (err) {
-    answerErr = err;
+  for (const orModel of OR_CHAIN) {
+    try {
+      answered = await askOpenRouter(env, messages, orModel);
+      break;
+    } catch (err) {
+      answerErr = err;
+    }
+  }
+  if (!answered) {
     try {
       answered = await askModel(env, messages);
       answerErr = null;
