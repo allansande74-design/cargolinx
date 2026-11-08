@@ -15,6 +15,9 @@ import { LANES, laneKm, laneHours, borderCount, laneBetween } from "../engine/la
 import { POLICY_VALUES } from "../engine/policy-values.mjs";
 
 const UPSTREAM = "https://api.meta.ai/v1/chat/completions";
+const OR_UPSTREAM = "https://openrouter.ai/api/v1/chat/completions";
+const OR_MODEL = "anthropic/claude-sonnet-5.5";
+const OR_REFERER = "https://altovexcargolinx.allansande74.workers.dev/";
 const MODEL = "muse-spark-1.3";
 const MAX_TOKENS = 700;
 const LIMIT = { windowMs: 10 * 60 * 1000, max: 20 };
@@ -289,6 +292,31 @@ function imagePart(dataUrl) {
   return { type: "image_url", image_url: { url: s } };
 }
 
+async function askOpenRouter(env, messages) {
+  const key = env.OPENROUTER_API_KEY;
+  if (!key) throw new Error("no openrouter key");
+  const res = await fetch(OR_UPSTREAM, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${key}`,
+      "content-type": "application/json",
+      "HTTP-Referer": OR_REFERER,
+      "X-Title": "CargoLinx desk",
+    },
+    body: JSON.stringify({
+      model: OR_MODEL,
+      messages,
+      max_tokens: MAX_TOKENS,
+      temperature: 0.2,
+    }),
+  });
+  if (!res.ok) throw new Error(`openrouter ${res.status}`);
+  const out = await res.json();
+  const text = clean(out?.choices?.[0]?.message?.content ?? "");
+  if (!text) throw new Error("empty answer");
+  return { text, model: out?.model ?? OR_MODEL };
+}
+
 async function askModel(env, messages) {
   const key = env.META_API_KEY;
   if (!key) throw new Error("no model key");
@@ -366,10 +394,25 @@ export async function chat(request, env) {
   ];
 
   const started = Date.now();
+  let answered = null;
+  let answerErr = null;
   try {
-    const { text, model } = await askModel(env, messages);
-    return json({ reply: text, facts, model, transcript, heard, ms: Date.now() - started });
+    answered = await askOpenRouter(env, messages);
   } catch (err) {
+    answerErr = err;
+    try {
+      answered = await askModel(env, messages);
+      answerErr = null;
+    } catch (err2) {
+      answerErr = err2;
+    }
+  }
+  if (answered) {
+    const { text, model } = answered;
+    return json({ reply: text, facts, model, transcript, heard, ms: Date.now() - started });
+  }
+  {
+    const err = answerErr;
     // A desk that cannot reach the model still answers: the figures are computed here, not invented.
     const fallback = facts.join("\n");
     return json({
