@@ -13,6 +13,7 @@ import { createAccount, createUser, can, assertCan, scoped, documentHeader, cred
 import { createOrder, advance, nextStage, blockersFor, receiveGoods, dispatch as dispatchOrder, deliver as deliverOrder, slaState, STAGES as ORDER_STAGES, ORDER_TYPES } from "../engine/orders.mjs";
 import { config as loconavConfig, probe as loconavProbe, parseWebhook, trackingState, LOCONAV } from "../engine/loconav.mjs";
 import { LANES, exportLaneRows } from "../engine/lanes.mjs";
+import { BUILD } from "./buildInfo.mjs";
 import { parseSpec, compareOffers, dropshipDecision, rfqDraft, landedPerUnit } from "../engine/sourcing.mjs";
 import { buildInvoice, recordPayment, ageing, creditExposure, nextInvoiceNumber } from "../engine/invoicing.mjs";
 import { receiveLot, stockPosition, allocate as allocateStock, pickList, availabilityStatement, binName } from "../engine/inventory.mjs";
@@ -227,7 +228,7 @@ function Desk({ onSignOut }) {
 
         <footer>
           Figures are computed by the local engine from dated statutory rates. This is an MVP working towards a full Trade-Logistics Ecosystem; live tracking via Loconav, video telematics, transit insurance, and escrow settlement bridges are arriving in v3.0 (launching in few weeks).
-          {model.live ? "" : " Model-assisted steps are disabled until a Meta key is configured."}
+          {model.live ? "" : " Model-assisted steps are disabled until a Meta key is configured."}{" "}Cut {BUILD.cut} · {BUILD.date}.
         </footer>
       </div>
     </div>
