@@ -228,7 +228,7 @@ function Desk({ onSignOut }) {
 
         <footer>
           Figures are computed by the local engine from dated statutory rates. This is an MVP working towards a full Trade-Logistics Ecosystem; live tracking via Loconav, video telematics, transit insurance, and escrow settlement bridges are arriving in v3.0 (launching in few weeks).
-          {model.live ? "" : " Model-assisted steps are disabled until a Meta key is configured."}{" "}Cut {BUILD.cut} · {BUILD.date}.
+          {model.live ? "" : " Model-assisted steps are disabled until a Meta key is configured."}{" "}v{BUILD.version} · {BUILD.date}.
         </footer>
       </div>
     </div>

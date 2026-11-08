@@ -247,7 +247,7 @@ export default function Landing({ onEnter, onSignIn }) {
             Owned by Altovex Global Logistics, part of the Dreamteam Consulting group · one platform,
             in production, built for a million users.
           </span>
-          <span style={{ marginLeft: "auto" }}>Figures are computed locally from dated statutory rates. Cut {BUILD.cut} · {BUILD.date}.</span>
+          <span style={{ marginLeft: "auto" }}>Figures are computed locally from dated statutory rates. v{BUILD.version} · {BUILD.date}.</span>
         </div>
       </footer>
     </div>
